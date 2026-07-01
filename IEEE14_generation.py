@@ -3,6 +3,8 @@ import sys
 import json
 import copy
 import random
+import logging
+import warnings
 import numpy as np
 import pandas as pd
 import pandapower as pp
@@ -14,8 +16,13 @@ from tqdm import tqdm
 from dataclasses import dataclass, field
 from pandapower.estimation import estimate
 from pandapower.plotting import simple_plot
+from scipy.sparse.linalg import MatrixRankWarning
 from pandapower.estimation.ppc_conversion import pp2eppci
 from pandapower.estimation.algorithm.matrix_base import BaseAlgebra
+
+warnings.filterwarnings("ignore", category=MatrixRankWarning)
+logging.getLogger("pandapower").setLevel(logging.CRITICAL)
+logging.getLogger("pandapower.estimation").setLevel(logging.CRITICAL)
 
 @dataclass
 class ObservabilityResult:
@@ -87,17 +94,17 @@ def apply_measurements(net, measurements, std_dev_v=1e-2, std_dev_pq=3e-2, sampl
     
     rows = []
 
-    for measurement in measurements:
-        std_dev = std_dev_v if measurement["meas_type"] == "v" else std_dev_pq
-        value = get_measurement_value(net, measurement)
+    for m in measurements:
+        std_dev = std_dev_v if m["meas_type"] == "v" else std_dev_pq
+        value = get_measurement_value(net, m)
         rows.append(dict(
             name=None,
-            measurement_type=measurement["meas_type"],
-            element_type=measurement["element_type"],
-            element=measurement["element"],
+            measurement_type=m["meas_type"],
+            element_type=m["element_type"],
+            element=m["element"],
             value=value,
             std_dev=std_dev,
-            side=measurement["side"],
+            side=m["side"],
         ))
     
     df = pd.DataFrame(rows, columns=["name", "measurement_type", "element_type",
@@ -109,7 +116,18 @@ def apply_measurements(net, measurements, std_dev_v=1e-2, std_dev_pq=3e-2, sampl
 def sample_measurement_configuration(candidates, keep_prob_range=(0.2, 1.0)):
     p = random.uniform(*keep_prob_range)
 
-    return [measurement for measurement in candidates if random.random() < p] 
+    groups = {}
+    for m in candidates:
+        key = (m["element_type"], m["element"], m["side"])
+        groups.setdefault(key, []).append(m)
+
+
+    selected = []
+    for group in groups.values():
+        if random.random() < p:
+            selected.extend(group)
+
+    return selected
     
 
 def observability_analysis(net, rank_tol=1e-8):
@@ -163,14 +181,13 @@ def observability_analysis(net, rank_tol=1e-8):
         observable=observable,
         rank=int(rank),
         no_states=int(no_states),
-        rank_deficiency=int(),
+        rank_deficiency=int(deficiency),
         unobservable_buses=unobservable_buses,
         unobservable_islands=unobservable_islands,
     )
 
 def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
                                 dataset_balance=0.5):
-    rng = random.Random(random.randrange(1000000))
     base_net = reset_network()
     candidates = candidate_measurements(base_net)
 
@@ -181,13 +198,21 @@ def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
     with tqdm(total=no_samples, desc="Generating observability dataset") as pbar: 
         while len(records) < no_samples:
             measurements = sample_measurement_configuration(candidates, keep_prob_range)
-            if not measurements:
+            if len(measurements) == 0:
                 continue
 
             net = copy.deepcopy(base_net)
             apply_measurements(net, measurements)
 
             result = observability_analysis(net)
+
+            if not result.observable:
+                try:
+                    success = estimate(net, init="flat")
+                except UserWarning:
+                    continue
+                if success["success"]:
+                    continue
 
             if len(records) > no_samples / 5:
                 observable_ratio = no_observable / len(records)
@@ -197,12 +222,14 @@ def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
                     continue
 
             records.append(dict(
+                net_json=pp.to_json(net),
                 measurement_config=measurements,
                 no_measurements=len(measurements),
                 observable=result.observable,
                 no_states=result.no_states,
                 unobservable_buses=result.unobservable_buses,
                 unobservable_islands=result.unobservable_islands,
+                rank_deficiency=result.rank_deficiency,
             ))
             if result.observable:
                 no_observable += 1
@@ -211,18 +238,29 @@ def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
 
             pbar.update(1)
 
+            if len(measurements) == 0:
+                print("si s-a si salvat ce dracu")
+
     print(f"{no_observable} observable / {no_unobservable} unobservable islands.")
         
     return records, candidates
 
 if __name__ == "__main__":
-    try:
-        no_samples = int(input("Enter number of samples: "))
-    except:
-        print("Input is not an integer!")
 
-    folder_name = "new_format_datasets"
-    save_name = input("Enter save folder name: ")
+    if len(sys.argv) < 3:
+        print("Specify args: no_samples and save_dict.")
+        sys.exit()
+    else:
+        try:
+            no_samples = int(sys.argv[1])
+        except:
+            print("First arg must be integer.")
+            sys.exit()
+
+    folder_name = "IEEE14_datasets"
+    if not os.path.exists(folder_name):
+        os.mkdir(folder_name)
+    save_name = sys.argv[2]
 
     records, candidates = generate_dataset(
         no_samples=no_samples,
@@ -233,9 +271,19 @@ if __name__ == "__main__":
     if not os.path.exists(os.path.join(folder_name, save_name)):
         os.mkdir(os.path.join(folder_name, save_name))
 
+    if not os.path.exists(os.path.join(folder_name, save_name, "observable")):
+        os.mkdir(os.path.join(folder_name, save_name, "observable"))
+
+    if not os.path.exists(os.path.join(folder_name, save_name, "unobservable")):
+        os.mkdir(os.path.join(folder_name, save_name, "unobservable"))
+
     with open(os.path.join(folder_name, save_name, "candidates.json"), "w") as f:
         json.dump(candidates, f, indent=2)
 
-    with open(os.path.join(folder_name, save_name, "records.json"), "w") as f:
-        for record in records:
-            f.write(json.dumps(record) + "\n")
+    for i, record in enumerate(records):
+        if record["observable"]:
+            record_path = os.path.join(folder_name, save_name, "observable", f"record_{i:04d}.json")
+        else:
+            record_path = os.path.join(folder_name, save_name, "unobservable", f"record_{i:04d}.json")
+        with open(record_path, "w") as f:
+            json.dump(record, f)
