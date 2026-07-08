@@ -1,24 +1,25 @@
-import os
-import sys
-import json
 import copy
-import random
+import json
 import logging
+import os
+import random
+import sys
 import warnings
-import numpy as np
-import pandas as pd
-import pandapower as pp
-import matplotlib.pyplot as plt
-import pandapower.networks as nw
-import pandapower.converter as pc
-
-from tqdm import tqdm
 from dataclasses import dataclass, field
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandapower as pp
+import pandapower.converter as pc
+import pandapower.networks as nw
+import pandapower.plotting as plot
+import pandas as pd
 from pandapower.estimation import estimate
+from pandapower.estimation.algorithm.matrix_base import BaseAlgebra
+from pandapower.estimation.ppc_conversion import pp2eppci
 from pandapower.plotting import simple_plot
 from scipy.sparse.linalg import MatrixRankWarning
-from pandapower.estimation.ppc_conversion import pp2eppci
-from pandapower.estimation.algorithm.matrix_base import BaseAlgebra
+from tqdm import tqdm
 
 warnings.filterwarnings("ignore", category=MatrixRankWarning)
 logging.getLogger("pandapower").setLevel(logging.CRITICAL)
@@ -113,7 +114,7 @@ def apply_measurements(net, measurements, std_dev_v=1e-2, std_dev_pq=3e-2, sampl
     df.index = np.arange(len(df))
     net.measurement = df
 
-def sample_measurement_configuration(candidates, keep_prob_range=(0.2, 1.0)):
+def sample_measurement_configuration(candidates, keep_prob_range=(0.2, 1.0),):
     p = random.uniform(*keep_prob_range)
 
     groups = {}
@@ -187,17 +188,27 @@ def observability_analysis(net, rank_tol=1e-8):
     )
 
 def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
-                                dataset_balance=0.5):
+                                dataset_balance=0.5, max_patience=500):
     base_net = reset_network()
     candidates = candidate_measurements(base_net)
 
+    seen = set()
     records = []
     no_observable = 0
     no_unobservable = 0
+    patience = 0
     
     with tqdm(total=no_samples, desc="Generating observability dataset") as pbar: 
-        while len(records) < no_samples:
+        while len(records) < no_samples and patience < max_patience:
             measurements = sample_measurement_configuration(candidates, keep_prob_range)
+            key = frozenset((m["element_type"], m["element"], m["side"]) for m in measurements)
+
+            if key in seen:
+                patience += 1
+                continue
+            
+            patience = 0
+            seen.add(key)
             if len(measurements) == 0:
                 continue
 
@@ -238,8 +249,6 @@ def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
 
             pbar.update(1)
 
-            if len(measurements) == 0:
-                print("si s-a si salvat ce dracu")
 
     print(f"{no_observable} observable / {no_unobservable} unobservable islands.")
         

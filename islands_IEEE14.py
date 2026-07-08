@@ -1,18 +1,22 @@
-import copy
-import random
+import os
 import sys
-import pandapower as pp
-from pandapower.estimation import estimate
-from pandapower.toolbox import drop_buses
+import copy
+import json
+import pprint
+import random
+import logging
 from collections import defaultdict
 from warnings import filterwarnings
-from scipy.sparse.linalg import MatrixRankWarning
-import json
-import tqdm
-from IEEE14_visualization import load_record
-import logging
+
 import matplotlib.pyplot as plt
+import pandapower as pp
 import pandapower.plotting as plot
+import tqdm
+from pandapower.estimation import estimate
+from pandapower.toolbox import drop_buses
+from scipy.sparse.linalg import MatrixRankWarning
+
+from visualization_IEEE14 import load_record
 
 filterwarnings("ignore", category=MatrixRankWarning)
 logging.getLogger("pandapower").setLevel(logging.CRITICAL)
@@ -47,7 +51,7 @@ class UnionFind:
         groups = defaultdict(list)
         for n in nodes:
             groups[self.find(n)].append(n)
-        return dict(groups)
+        return {root: frozenset(members) for root, members in groups.items()}
     
 def get_subnetwork(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
     bus_set = set(bus_ids)
@@ -63,6 +67,7 @@ def get_subnetwork(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
     if trafos_to_drop:
         valid_trafos = [t for t in trafos_to_drop if t in subnet.trafo.index]
         subnet.trafo.drop(valid_trafos, inplace=True)
+    
 
     return subnet
 
@@ -84,13 +89,23 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
 
         result = estimate(subnet, init="flat")
         return result["success"], subnet
+    
     except(Exception, UserWarning):
         return False, None
     
-def sample_forest(net, samples_per_island=5, record_id="unknown"):
+def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=None, seen_configs=None):
+    if isl_registry is None:
+        isl_registry = {}
+    if seen_configs == None:
+        seen_configs = set()
+
     buses = net.bus.index.tolist()
     uf = UnionFind(buses)
     meas = net.measurement
+
+    if not os.path.exists(os.path.join(output_dir, f"record_{record_id}")):
+        os.makedirs(os.path.join(output_dir, f"record_{record_id}"))
+
 
     flow_meas = meas[meas.element_type.isin(["line", "trafo"])]
     for _, m in flow_meas.iterrows():
@@ -121,19 +136,48 @@ def sample_forest(net, samples_per_island=5, record_id="unknown"):
         chosen = random.choice(candidates)
         uf.union(bus, chosen)
 
+    
     raw_islands = uf.islands(buses)
     valid = []
 
     measured_lines = set(meas[meas.element_type == "line"].element.tolist())
     measured_trafos = set(meas[meas.element_type == "trafo"].element.tolist())
 
+    
     for island_buses in raw_islands.values():
         if len(island_buses) < 2:
             continue
+        if island_buses in isl_registry:
+            continue
+
+        island_id = len(isl_registry)
+        isl_registry[island_buses] = island_id
+
+        start_sampling = 0
+        save_path = os.path.join(output_dir, f"record_{record_id}", f"island_{island_id}")
+        
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
 
         result, subnet = check_island(net, island_buses)
         if result:
-            valid.append({"subnet": pp.to_json(subnet), "buses": list(island_buses)})
+            lines = [f"{f}-{t}" for f, t in zip(subnet.line.from_bus, subnet.line.to_bus)]
+            trafos = [f"{h}-{l}" for h, l in zip(subnet.trafo.hv_bus, subnet.trafo.lv_bus)]
+
+            config = (frozenset(island_buses), frozenset(lines), frozenset(trafos))
+            if config not in seen_configs:
+                seen_configs.add(config)
+                config_path = os.path.join(save_path, f"config_{start_sampling}.json")
+                pp.to_json(subnet, config_path)
+                valid.append({"subnet_path": config_path, "buses": list(island_buses), "lines": lines, "trafos": trafos})
+                start_sampling += 1
+
+            # save_path = os.path.join(output_dir, f"record_{record_id}", f"island_{island_id}", f"config_{start_sampling}.json")
+            # pp.to_json(subnet, save_path)
+            # valid.append({"subnet_path": save_path, "buses": list(island_buses), "lines": lines, "trafos": trafos})
+            # start_sampling += 1
+
 
         bus_set = set(island_buses)
         internal_lines = net.line[net.line.from_bus.isin(bus_set) & net.line.to_bus.isin(bus_set)].index.tolist()
@@ -143,8 +187,16 @@ def sample_forest(net, samples_per_island=5, record_id="unknown"):
         unmeas_trafos = list(set(internal_trafos) - measured_trafos)
         total_unmeas = len(unmeas_lines) + len(unmeas_trafos)
 
+        # Start trimming forest
         if total_unmeas > 0:
-            for sample_idx in range(samples_per_island):
+            config_id = start_sampling
+            target_configs = start_sampling + samples_per_island
+            max_attempts = samples_per_island * 3
+            attempts = 0
+
+            while config_id < target_configs and attempts < max_attempts:
+                attempts += 1
+                config_path = os.path.join(save_path, f"config_{config_id}.json")
                 n_drop = random.randint(1, max(1, total_unmeas // 2))
                 pool = [('line', l) for l in unmeas_lines] + [('trafo', t) for t in unmeas_trafos]
                 to_drop = random.sample(pool, min(n_drop, len(pool)))
@@ -157,30 +209,37 @@ def sample_forest(net, samples_per_island=5, record_id="unknown"):
                     if hasattr(subnet, "res_bus_est") and not subnet.res_bus_est.empty:
                         observed_buses = subnet.res_bus_est["vm_pu"].dropna().index.tolist()
                         observed_buses = [b for b in observed_buses if b in island_buses]
-                        
+
                         if len(observed_buses) >= 2:
-                            valid.append({
-                                "subnet": pp.to_json(subnet), 
-                                "buses": observed_buses
-                            })
-                            plot.simple_plot(subnet, show_plot=False)
-                            filename = f"island_rec{record_id}_scenB_{len(observed_buses)}buses_idx{sample_idx}.jpg"
-                            plt.savefig(filename, format='jpg', bbox_inches='tight', dpi=150)
-                            plt.close()
+                            lines = [f"{f}-{t}" for f, t in zip(subnet.line.from_bus, subnet.line.to_bus)]
+                            trafos = [f"{h}-{l}" for h, l in zip(subnet.trafo.hv_bus, subnet.trafo.lv_bus)]
+                            
+                            # Enforce global uniqueness for the final layout
+                            config = (frozenset(observed_buses), frozenset(lines), frozenset(trafos))
+                            if config not in seen_configs:
+                                seen_configs.add(config)
+                                pp.to_json(subnet, config_path)
+                                valid.append({
+                                    "subnet_path": config_path,
+                                    "buses": observed_buses,
+                                    "lines": lines,
+                                    "trafos": trafos,
+                                })
+                                config_id += 1
+                            
 
     return valid
 
-def sample_configurations(net, n_samples=50, record_id="unknown"):
-    seen = set()
-    configs = []
 
-    for _ in range(n_samples):
-        islands = sample_forest(net, record_id=record_id)
+def sample_configurations(net, n_samples=50, record_id="unknown"):
+    configs = []
+    isl_registry = {}
+    seen_configs = set()
+
+    for sample_no in range(n_samples):
+        islands = sample_forest(net, record_id=record_id, isl_registry=isl_registry, seen_configs=seen_configs)
         if len(islands) > 0:
-            key = frozenset(frozenset(isl) for isl in islands)
-            if key not in seen:
-                seen.add(key)
-                configs.append(islands)
+            configs.extend(islands)
 
     return configs
 
@@ -189,28 +248,36 @@ if __name__ == "__main__":
     successes = 0
     failures = 0
 
-    if len(sys.argv) < 2:
-        print("Specify number of files to parse.")
+    if len(sys.argv) < 4:
+        print("Specify number of files to parse, dataset and output directory.")
         sys.exit()
     n_files = int(sys.argv[1])
+    dataset_dir = sys.argv[2]
+    output_dir = sys.argv[3]
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     for record_id in tqdm.tqdm(range(n_files), desc="Sampling island configurations"):
-        record = load_record("hmm_batch", record_id)
+        record = load_record(dataset_dir, record_id)
         if record["observable"]:
             continue
         net = pp.from_json_string(record["net_json"])
-        try:
-            result = estimate(net, init="flat")
-        except UserWarning:
-            continue
 
-        configs = sample_configurations(net, n_samples=50)
+        configs = sample_configurations(net, n_samples=50, record_id=str(record_id))
         if len(configs) > 0:
-            all_results[record_id] = {
+            all_results[int(record_id)] = {
                 "observable": False,
                 "n_unique_configs": len(configs),
                 "configurations": configs
             }
 
-    with open("test_island_configurations.json", "w") as f:
-        json.dump(all_results, f, indent=2)
+            with open(os.path.join(output_dir, "islands_records.json"), "w") as f:
+                json.dump(all_results, f, indent=2)
+
+    for current, _, _ in os.walk(output_dir, topdown=False):
+        if current == output_dir:
+            continue
+
+        if not os.listdir(current):
+            os.rmdir(current)

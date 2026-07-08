@@ -1,7 +1,8 @@
+import glob
+import json
 import os
 import sys
-import json
-import glob
+
 import matplotlib.pyplot as plt
 import networkx as nx
 import pandapower as pp
