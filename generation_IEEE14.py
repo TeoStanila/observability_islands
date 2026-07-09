@@ -269,7 +269,7 @@ if __name__ == "__main__":
     folder_name = "IEEE14_datasets"
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
-    save_name = sys.argv[2]
+    save_name = sys.argv[2] + "_batch"
 
     records, candidates = generate_dataset(
         no_samples=no_samples,

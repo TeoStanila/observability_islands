@@ -4,22 +4,25 @@ import json
 from tqdm import tqdm
 import pandapower as pp
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from generation_IEEE14 import observability_analysis
+
 
 if len(sys.argv) < 2:
     print("Specify dataset to check.")
     sys.exit()
 check_dir = sys.argv[1]
 
-observable_dir = os.path.join("IEEE14_datasets", check_dir, "observable")
+unobservable_dir = os.path.join("IEEE14_datasets", check_dir, "unobservable")
 
 incorrect = []
 
-for filename in tqdm(sorted(os.listdir(observable_dir)), desc="Checking observability"):
+for filename in tqdm(sorted(os.listdir(unobservable_dir)), desc="Checking unobservability"):
     if not filename.endswith(".json"):
         continue
 
-    path = os.path.join(observable_dir, filename)
+    path = os.path.join(unobservable_dir, filename)
 
     with open(path, "r") as f:
         record = json.load(f)
@@ -27,7 +30,7 @@ for filename in tqdm(sorted(os.listdir(observable_dir)), desc="Checking observab
     net = pp.from_json_string(record["net_json"])
     result = observability_analysis(net)
 
-    if not result.observable:
-        incorrect.append((filename, result.rank_deficiency))
+    if result.observable:
+        incorrect.append((filename))
 
-print(f"Incorrectly labeled observable: {len(incorrect)}")
+print(f"Incorrectly labeled unobservable: {len(incorrect)}")
