@@ -11,15 +11,15 @@ from warnings import filterwarnings
 import matplotlib.pyplot as plt
 import pandapower as pp
 import pandapower.plotting as plot
-import pandapower.topology as top
-import networkx as nx
 import tqdm
-from pandapower.estimation import estimate
+import pandas as pd
 from pandapower.toolbox import drop_buses
 from scipy.sparse.linalg import MatrixRankWarning
 
 from visualization_IEEE14 import load_record
+from generation_IEEE14 import observability_analysis
 
+filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 filterwarnings("ignore", category=MatrixRankWarning)
 logging.getLogger("pandapower").setLevel(logging.CRITICAL)
 
@@ -120,11 +120,28 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
         if len(subnet.bus) < 2:
             return False, None
 
-        result = estimate(subnet, init="flat")
-        return result["success"], subnet
+        result = observability_analysis
+        return result.observable, subnet
     
     except(Exception, UserWarning):
         return False, None
+    
+def save_network_drawing(subnet, config_path):
+    img_path = os.path.splitext(config_path)[0] + ".png"
+    try:
+        has_coords = hasattr(subnet, "bus_geodata") and len(subnet.bus_geodata) > 0
+        if not has_coords:
+            plot.create_generic_coordinates(subnet)
+
+        ax = plot.simple_plot(subnet, show_plot=False)
+        fig = getattr(ax, "figure", None) or plt.gcf()
+        fig.savefig(img_path, dpi=150, bbox_inches="tight")
+        plt.close(fig)
+    except Exception:
+        plt.close("all")
+        return None
+
+    return img_path
     
 def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=None, seen_configs=None):
     if isl_registry is None:
@@ -135,6 +152,8 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
     buses = net.bus.index.tolist()
     uf = UnionFind(buses)
     meas = net.measurement
+
+    island_snapshots = []
     
 
     flow_meas = meas[meas.element_type.isin(["line", "trafo"])]
@@ -146,21 +165,16 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
         else:
             fb = net.trafo.at[eid, "hv_bus"]
             tb = net.trafo.at[eid, "lv_bus"]
-        uf.union(fb, tb)
-
-
-    measured_lines = set(flow_meas[flow_meas.element_type == "line"].element.tolist())
-    measured_trafos = set(flow_meas[flow_meas.element_type == "trafo"].element.tolist())
+        if uf.union(fb, tb):
+            island_snapshots.append(copy.deepcopy(uf))
 
     adjacency = defaultdict(list)
     for lid, row in net.line.iterrows():
-        if lid in measured_lines:
-            adjacency[row.from_bus].append(row.to_bus)
-            adjacency[row.to_bus].append(row.from_bus)
+        adjacency[row.from_bus].append(row.to_bus)
+        adjacency[row.to_bus].append(row.from_bus)
     for tid, row in net.trafo.iterrows():
-        if tid in measured_trafos:
-            adjacency[row.hv_bus].append(row.lv_bus)
-            adjacency[row.lv_bus].append(row.hv_bus)
+        adjacency[row.hv_bus].append(row.lv_bus)
+        adjacency[row.lv_bus].append(row.hv_bus)
 
     inj_buses = meas[meas.element_type == "bus"].element.tolist()
     random.shuffle(inj_buses)
@@ -170,19 +184,38 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
         if not candidates:
             continue
         chosen = random.choice(candidates)
-        uf.union(bus, chosen)
+        if uf.union(bus, chosen):
+            island_snapshots.append(copy.deepcopy(uf))
+
+    island_snapshots.append(uf)
 
     
-    raw_islands = uf.islands(buses)
+    raw_islands = {}
+    for snapshot in island_snapshots:
+        for members in snapshot.islands(buses).values():
+            raw_islands[members] = True
+            
     valid = []
+    measured_lines = set(flow_meas[flow_meas.element_type == "line"].element.tolist())
+    measured_trafos = set(flow_meas[flow_meas.element_type == "trafo"].element.tolist())
 
-    measured_lines = set(meas[meas.element_type == "line"].element.tolist())
-    measured_trafos = set(meas[meas.element_type == "trafo"].element.tolist())
+    candidate_islands = [isl for isl in raw_islands.keys() if len(isl) >= 2]
+    base_results = {isl: check_island(net, isl) for isl in candidate_islands}
+    successful_islands = [isl for isl in candidate_islands if base_results[isl][0]]
 
+    def redundant_island(island_buses):
+        return any(
+            island_buses < other
+            for other in successful_islands
+            if other != island_buses
+        )
     
-    for island_buses in raw_islands.values():
-        if len(island_buses) < 2:
-            continue
+    islands_to_process = {
+        isl for isl in candidate_islands
+        if not (base_results[isl][0] and redundant_island(isl))
+    }
+    
+    for island_buses in islands_to_process:
         if island_buses in isl_registry:
             continue
 
@@ -204,6 +237,7 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
                 seen_configs.add(config)
                 config_path = os.path.join(save_path, f"config_{start_sampling}.json")
                 pp.to_json(subnet, config_path)
+                image_path = save_network_drawing(subnet, config_path)
                 valid.append({"subnet_path": config_path, "buses": list(island_buses), "lines": lines, "trafos": trafos})
                 start_sampling += 1
 
@@ -235,25 +269,24 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
 
                 result, subnet = check_island(net, island_buses, lines_to_drop=lines_to_drop, trafos_to_drop=trafos_to_drop)
                 if result:
-                    if hasattr(subnet, "res_bus_est") and not subnet.res_bus_est.empty:
-                        observed_buses = subnet.res_bus_est["vm_pu"].dropna().index.tolist()
-                        observed_buses = [b for b in observed_buses if b in island_buses]
+                    observed_buses = [b for b in subnet.bus.index.tolist() if b in island_buses]
 
-                        if len(observed_buses) >= 2:
-                            lines = [f"{f}-{t}" for f, t in zip(subnet.line.from_bus, subnet.line.to_bus)]
-                            trafos = [f"{h}-{l}" for h, l in zip(subnet.trafo.hv_bus, subnet.trafo.lv_bus)]
-                            
-                            config = (frozenset(observed_buses), frozenset(lines), frozenset(trafos))
-                            if config not in seen_configs:
-                                seen_configs.add(config)
-                                pp.to_json(subnet, config_path)
-                                valid.append({
-                                    "subnet_path": config_path,
-                                    "buses": observed_buses,
-                                    "lines": lines,
-                                    "trafos": trafos,
-                                })
-                                config_id += 1
+                    if len(observed_buses) >= 2:
+                        lines = [f"{f}-{t}" for f, t in zip(subnet.line.from_bus, subnet.line.to_bus)]
+                        trafos = [f"{h}-{l}" for h, l in zip(subnet.trafo.hv_bus, subnet.trafo.lv_bus)]
+                        
+                        config = (frozenset(observed_buses), frozenset(lines), frozenset(trafos))
+                        if config not in seen_configs:
+                            seen_configs.add(config)
+                            pp.to_json(subnet, config_path)
+                            # image_path = save_network_drawing(subnet, config_path)
+                            valid.append({
+                                "subnet_path": config_path,
+                                "buses": observed_buses,
+                                "lines": lines,
+                                "trafos": trafos,
+                            })
+                            config_id += 1
                             
 
     return valid

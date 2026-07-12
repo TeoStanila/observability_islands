@@ -21,6 +21,7 @@ from pandapower.plotting import simple_plot
 from scipy.sparse.linalg import MatrixRankWarning
 from tqdm import tqdm
 
+warnings.filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 warnings.filterwarnings("ignore", category=MatrixRankWarning)
 logging.getLogger("pandapower").setLevel(logging.CRITICAL)
 logging.getLogger("pandapower.estimation").setLevel(logging.CRITICAL)
@@ -61,6 +62,8 @@ def candidate_measurements(net):
 
     for bus in net.bus.index:
         candidates.append(dict(meas_type="v", element_type="bus", element=int(bus), side=None))
+        candidates.append(dict(meas_type="p", element_type="bus", element=int(bus), side=None))
+        candidates.append(dict(meas_type="q", element_type="bus", element=int(bus), side=None))
 
     for line in net.line.index:
         for side in ("from", "to"):
@@ -76,7 +79,12 @@ def candidate_measurements(net):
 
 def get_measurement_value(net, measurement):
     if measurement["element_type"] == "bus":
-        val = net.res_bus.vm_pu[measurement["element"]]
+        if measurement["meas_type"] == "v":
+            val = net.res_bus.vm_pu[measurement["element"]]
+        elif measurement["meas_type"] == "p":
+            val = net.res_bus.p_mw[measurement["element"]]
+        elif measurement["meas_type"] == "q":
+            val = net.res_bus.q_mvar[measurement["element"]]
     elif measurement["element_type"] == "line":
         col = f"{measurement["meas_type"]}_{measurement["side"]}_{'mw' if measurement["meas_type"] == "p" else 'mvar'}"
         val = net.res_line[col][measurement["element"]]
@@ -119,7 +127,7 @@ def sample_measurement_configuration(candidates, keep_prob_range=(0.2, 1.0),):
 
     groups = {}
     for m in candidates:
-        key = (m["element_type"], m["element"], m["side"])
+        key = (m["meas_type"], m["element_type"], m["element"], m["side"])
         groups.setdefault(key, []).append(m)
 
 
