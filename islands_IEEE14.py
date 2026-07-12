@@ -120,7 +120,7 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
         if len(subnet.bus) < 2:
             return False, None
 
-        result = observability_analysis
+        result = observability_analysis(subnet)
         return result.observable, subnet
     
     except(Exception, UserWarning):
@@ -129,15 +129,75 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
 def save_network_drawing(subnet, config_path):
     img_path = os.path.splitext(config_path)[0] + ".png"
     try:
-        has_coords = hasattr(subnet, "bus_geodata") and len(subnet.bus_geodata) > 0
-        if not has_coords:
-            plot.create_generic_coordinates(subnet)
+        meas = subnet.measurement
+        meas_buses = set(meas[meas.element_type == "bus"].element.tolist())
+        meas_lines = set(meas[meas.element_type == "line"].element.tolist())
+        meas_trafos = set(meas[meas.element_type == "trafo"].element.tolist())
 
-        ax = plot.simple_plot(subnet, show_plot=False)
+        buses = set(subnet.bus.index.tolist())
+        unmeas_buses = buses - meas_buses
+        lines = set(subnet.line.index.tolist())
+        unmeas_lines = lines - meas_lines
+        trafos = set(subnet.trafo.index.tolist())
+        unmeas_trafos = trafos - meas_trafos
+
+        collections = []
+        if unmeas_buses:
+            collections.append(plot.create_bus_collection(
+                subnet, buses=sorted(unmeas_buses), color="#d62728", size=0.08
+            ))
+        if meas_buses:
+            collections.append(plot.create_bus_collection(
+                subnet, buses=sorted(meas_buses), color="#90ee90", size=0.08
+            ))
+        if unmeas_lines:
+            collections.append(plot.create_line_collection(
+                subnet, lines=sorted(unmeas_lines), color="#d62728", linewidth=1.5
+            ))
+        if meas_lines:
+            collections.append(plot.create_line_collection(
+                subnet, lines=sorted(meas_lines), color="#90ee90", linewidth=1.5
+            ))
+        if unmeas_trafos:
+            collections.append(plot.create_trafo_collection(
+                subnet, trafos=sorted(unmeas_trafos), color="#d62728", size=0.2
+            ))
+        if meas_trafos:
+            collections.append(plot.create_trafo_collection(
+                subnet, trafos=sorted(meas_trafos), color="#90ee90", size=0.2
+            ))
+
+        ax = plot.draw_collections(collections, figsize=(12, 9), draw=False)
+
+        for bus_id in subnet.bus.index.tolist():
+            coords = None
+            if "geo" in subnet.bus.columns:
+                geo = subnet.bus.at[bus_id, "geo"]
+                if geo is not None and isinstance(geo, str):
+                    coords = json.loads(geo)["coordinates"]
+            
+            # Safe fallback just in case a bus lacks the "geo" string
+            if coords is None:
+                geodata = getattr(subnet, "bus_geodata", None)
+                if geodata is not None and bus_id in geodata.index:
+                    coords = (geodata.at[bus_id, "x"], geodata.at[bus_id, "y"])
+
+            if coords is not None:
+                ax.annotate(
+                    str(bus_id), 
+                    xy=(coords[0], coords[1]), 
+                    fontsize=15, 
+                    color="blue",
+                    xytext=(4, 4), 
+                    textcoords="offset points"
+                )
+
         fig = getattr(ax, "figure", None) or plt.gcf()
         fig.savefig(img_path, dpi=150, bbox_inches="tight")
-        plt.close(fig)
-    except Exception:
+        plt.close("all")
+
+    except Exception as e:
+        print(f"[Error] Failed to save drawing for {config_path}: {e}")
         plt.close("all")
         return None
 
@@ -279,7 +339,8 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
                         if config not in seen_configs:
                             seen_configs.add(config)
                             pp.to_json(subnet, config_path)
-                            # image_path = save_network_drawing(subnet, config_path)
+                            image_path = save_network_drawing(subnet, config_path)
+                            
                             valid.append({
                                 "subnet_path": config_path,
                                 "buses": observed_buses,
@@ -342,8 +403,6 @@ if __name__ == "__main__":
 
             with open(os.path.join(save_dir, "islands_records.json"), "w") as f:
                 json.dump(all_results, f, indent=2)
-
-    
 
     for current, _, _ in os.walk(save_dir, topdown=False):
         if current == dataset_dir:
