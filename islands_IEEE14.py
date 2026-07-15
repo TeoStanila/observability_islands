@@ -212,6 +212,88 @@ def save_network_drawing(subnet, config_path):
         return None
 
     return img_path
+
+def discover_raw_islands(net):
+    buses = net.bus.index.tolist()
+    uf = UnionFind(buses)
+    meas = net.measurement
+
+    island_snapshots = []
+
+    flow_meas = meas[meas.element_type.isin(["line", "trafo"])]
+    for _, m in flow_meas.iterrows():
+        eid = m.element
+        if m.element_type == "line":
+            fb = net.line.at[eid, "from_bus"]
+            tb = net.line.at[eid, "to_bus"]
+        else:
+            fb = net.trafo.at[eid, "hv_bus"]
+            tb = net.trafo.at[eid, "lv_bus"]
+        if uf.union(fb, tb):
+            island_snapshots.append(copy.deepcopy(uf))
+
+    adjacency = defaultdict(list)
+    for lid, row in net.line.iterrows():
+        adjacency[row.from_bus].append(row.to_bus)
+        adjacency[row.to_bus].append(row.from_bus)
+    for tid, row in net.trafo.iterrows():
+        adjacency[row.hv_bus].append(row.lv_bus)
+        adjacency[row.lv_bus].append(row.hv_bus)
+
+    inj_buses = meas[meas.element_type == "bus"].element.tolist()
+    random.shuffle(inj_buses)
+
+    for bus in inj_buses:
+        candidates = [nb for nb in adjacency[bus] if not uf.same(bus, nb)]
+        if not candidates:
+            continue
+        chosen = random.choice(candidates)
+        if uf.union(bus, chosen):
+            island_snapshots.append(copy.deepcopy(uf))
+
+    island_snapshots.append(uf)
+
+    raw_islands = set()
+    for snapshot in island_snapshots:
+        for members in snapshot.islands(buses).values():
+            if 2 <= len(members) <= 13:
+                raw_islands.add(members)
+
+    return raw_islands
+
+def trim_variants(net, island_buses, measured_lines, measured_trafos, n_variants):
+    bus_set = set(island_buses)
+    internal_lines = net.line[net.line.from_bus.isin(bus_set) & net.line.to_bus.isin(bus_set)].index.tolist()
+    internal_trafos = net.trafo[net.trafo.hv_bus.isin(bus_set) & net.trafo.lv_bus.isin(bus_set)].index.tolist()
+
+    unmeas_lines = list(set(internal_lines) - measured_lines)
+    unmeas_trafos = list(set(internal_trafos) - measured_trafos)
+    total_unmeas = len(unmeas_lines) + len(unmeas_trafos)
+
+    variants = []
+    if total_unmeas == 0 or n_variants <= 0:
+        return variants
+    
+    seen_drops = set()
+    max_attempts = n_variants
+    attempts = 0
+    while attempts < max_attempts and len(variants) < n_variants:
+        attempts += 1
+        n_drop = random.randint(1, max(1, total_unmeas // 2))
+        pool = [('line', l) for l in unmeas_lines] + [('trafo', t) for t in unmeas_trafos]
+        to_drop = random.sample(pool, min(n_drop, len(pool)))
+
+        lines_to_drop = [eid for etype, eid in to_drop if etype == 'line']
+        trafos_to_drop = [eid for etype, eid in to_drop if etype == 'trafo']
+
+        drop_key = (frozenset(lines_to_drop), frozenset(trafos_to_drop))
+        if drop_key in seen_drops:
+            continue
+        seen_drops.add(drop_key)
+        variants.append((lines_to_drop, trafos_to_drop))
+    
+    return variants
+
     
 def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=None, seen_configs=None, global_successful=None):
     if isl_registry is None:
@@ -385,16 +467,63 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
     return valid
 
 
-def sample_configurations(net, n_samples=50, record_id="unknown"):
+def sample_configurations(net, n_samples=50, samples_per_island=3, record_id="unknown"):
+    all_raw_islands = set()
+    for _ in range(n_samples):
+        all_raw_islands |= discover_raw_islands(net)
+
+    meas = net.measurement
+    flow_meas = meas[meas.element_type.isin(["line", "trafo"])]
+    measured_lines = set(flow_meas[flow_meas.element_type == "line"].element.tolist())
+    measured_trafos = set(flow_meas[flow_meas.element_type == "trafo"].element.tolist())
+
+    candidate_configs = [(isl, [], []) for isl in all_raw_islands]
+    for isl in all_raw_islands:
+        for lines_to_drop, trafos_to_drop in trim_variants(net, isl, measured_lines, measured_trafos, samples_per_island):
+            candidate_configs.append((isl, lines_to_drop, trafos_to_drop))
+
+    evaluated = []
+    for island_buses, lines_to_drop, trafos_to_drop in candidate_configs:
+        observable, subnet = check_island(net, island_buses, lines_to_drop=lines_to_drop, trafos_to_drop=trafos_to_drop)
+        if not observable or subnet is None:
+            continue
+        actual_buses = frozenset(subnet.bus.index.tolist())
+        if len(actual_buses) < 2:
+            continue
+        lines = [f"{f}-{t}" for f, t in zip(subnet.line.from_bus, subnet.line.to_bus)]
+        trafos = [f"{h}-{l}" for h, l in zip(subnet.trafo.hv_bus, subnet.trafo.lv_bus)]
+        evaluated.append((actual_buses, lines, trafos, subnet))
+
+    evaluated.sort(key=lambda e: len(e[0]), reverse=True)
+
     configs = []
-    isl_registry = {}
-    global_successful = set()
+    accepted_buses = []   
     seen_configs = set()
 
-    for _ in range(n_samples):
-        islands = sample_forest(net, record_id=record_id, isl_registry=isl_registry, seen_configs=seen_configs, global_successful=global_successful)
-        if len(islands) > 0:
-            configs.extend(islands)
+    for actual_buses, lines, trafos, subnet in evaluated:
+        if any(actual_buses <= acc for acc in accepted_buses):
+            continue
+
+        config = (actual_buses, frozenset(lines), frozenset(trafos))
+        if config in seen_configs:
+            continue
+        seen_configs.add(config)
+        accepted_buses.append(actual_buses)
+
+        island_id = len(configs)
+        save_path = os.path.join("islands", dataset_dir, f"record_{record_id}", f"island_{island_id}")
+        os.makedirs(save_path, exist_ok=True)
+
+        config_path = os.path.join(save_path, "config_0.json")
+        pp.to_json(subnet, config_path)
+        save_network_drawing(subnet, config_path)
+
+        configs.append({
+            "subnet_path": config_path,
+            "buses": list(actual_buses),
+            "lines": lines,
+            "trafos": trafos,
+        })
 
     return configs
 
@@ -444,8 +573,9 @@ if __name__ == "__main__":
         if not os.listdir(current):
             os.rmdir(current)
 
+    size_dict = {}
+
     for record in os.scandir(save_dir):
-        print(record)
         if not record.is_dir():
             continue
 
@@ -468,7 +598,7 @@ if __name__ == "__main__":
             if big_net is None:
                 big_net = new_net
             else:
-                big_net = pp.merge_nets(big_net, new_net, net2_reindex_log_level=None, std_prio_on_net1=True)
+                big_net = pp.merge_nets(big_net, new_net, net2_reindex_log_level=None, std_prio_on_net1=True, validate=False)
 
         if big_net is None:
             print("hmmm")
@@ -480,6 +610,7 @@ if __name__ == "__main__":
         
         big_graph = top.create_nxgraph(big_net)
         node_features = []
+        size_dict[record] = len(big_graph.nodes)
         for node in big_graph.nodes:
             value = np.float32(0)
             meas_type = ""
@@ -535,11 +666,13 @@ if __name__ == "__main__":
             attrs = {(edges[i][0], edges[i][1], edges[i][2]): edge_features[i, j] for i in range(len(edges))}
             nx.set_edge_attributes(big_graph, attrs, name=name)
 
-        print(len(big_graph.nodes))
-        print("="*30)
 
         graph_path = os.path.join(record.path, "combined_net.pkl")
         with open(graph_path, "wb") as f:
             pickle.dump(big_graph, f)
 
         save_network_drawing(big_net, out_json_path)
+    
+    for key, value in size_dict.items():
+        if value >= 14:
+            print(key, value)
