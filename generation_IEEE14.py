@@ -5,6 +5,7 @@ import os
 import random
 import sys
 import warnings
+import argparse
 from dataclasses import dataclass, field
 
 import matplotlib.pyplot as plt
@@ -264,20 +265,18 @@ def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
 
 if __name__ == "__main__":
 
-    if len(sys.argv) < 3:
-        print("Specify args: no_samples and save_dict.")
-        sys.exit()
-    else:
-        try:
-            no_samples = int(sys.argv[1])
-        except:
-            print("First arg must be integer.")
-            sys.exit()
+    parser = argparse.ArgumentParser(description="Generate measured networks from IEEE-14 dataset")
+    parser.add_argument("--dataset_name", required=True, type=str, help="Name for dataset directory")
+    parser.add_argument("--no_samples", required=True, type=int, help="Number of samples to generate")
+    args = parser.parse_args()
+
+
+    no_samples = args.no_samples
 
     folder_name = "IEEE14_datasets"
     if not os.path.exists(folder_name):
         os.mkdir(folder_name)
-    save_name = sys.argv[2] + "_batch"
+    save_name = args.dataset_name + "_batch"
 
     records, candidates = generate_dataset(
         no_samples=no_samples,

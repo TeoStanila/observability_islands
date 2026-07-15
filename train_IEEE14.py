@@ -239,11 +239,11 @@ def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16
     print(f"Training complete. Best model saved to: {best_model_file}")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train Graph Variational Autoencoder for IEEE-14 Islanding Prediction")
-    parser.add_argument("--dataset_dir", required=True, type=str, help="Directory containing record_*/combined_graph.pkl files")
-    parser.add_argument("--save_path", default="./checkpoints/IEEE_14", type=str, help="Directory to save checkpoint weights")
+    parser = argparse.ArgumentParser(description="Train Graph Variational Autoencoder for IEEE-14 Dataset")
+    parser.add_argument("--dataset_dir", required=True, type=str, help="Dataset directory")
+    parser.add_argument("--save_path", default="./checkpoints/IEEE_14", type=str, help="Save directory")
     parser.add_argument("--epochs", default=300, type=int, help="Maximum number of training epochs")
-    parser.add_argument("--batch_patience", default=40, type=int, help="Early stopping patience epochs")
+    parser.add_argument("--batch_patience", default=40, type=int, help="Early stopping epochs")
     parser.add_argument("--hidden_dim", default=64, type=int, help="Hidden layer dimension")
     parser.add_argument("--latent_dim", default=16, type=int, help="Latent embedding dimension")
     parser.add_argument("--beta", default=0.001, type=float, help="KL divergence regularization weight")
