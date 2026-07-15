@@ -82,14 +82,22 @@ def build_island_label_cache(paths):
 class GVAEncoder(nn.Module):
     def __init__(self, in_dim, hidden_dim, latent_dim, edge_dim):
         super().__init__()
+        self.node_norm = nn.LayerNorm(in_dim)
+        self.edge_norm = nn.LayerNorm(edge_dim)
+        
         self.conv1 = GATv2Conv(in_dim, hidden_dim, edge_dim=edge_dim, heads=2, concat=False)
         self.conv_mu = GATv2Conv(hidden_dim, latent_dim, edge_dim=edge_dim, heads=1, concat=False)
         self.conv_logvar = GATv2Conv(hidden_dim, latent_dim, edge_dim=edge_dim, heads=1, concat=False)
 
     def forward(self, x, edge_index, edge_attr):
+        x = self.node_norm(x)
+        edge_attr = self.edge_norm(edge_attr)
+        
         h = F.elu(self.conv1(x, edge_index, edge_attr))
         mean = self.conv_mu(h, edge_index, edge_attr)
         logvar = self.conv_logvar(h, edge_index, edge_attr)
+        
+        logvar = torch.clamp(logvar, min=-10.0, max=10.0)
         
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
@@ -233,7 +241,7 @@ def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Graph Variational Autoencoder for IEEE-14 Islanding Prediction")
     parser.add_argument("--dataset_dir", required=True, type=str, help="Directory containing record_*/combined_graph.pkl files")
-    parser.add_argument("--save_path", default="./checkpoints", type=str, help="Directory to save checkpoint weights")
+    parser.add_argument("--save_path", default="./checkpoints/IEEE_14", type=str, help="Directory to save checkpoint weights")
     parser.add_argument("--epochs", default=300, type=int, help="Maximum number of training epochs")
     parser.add_argument("--batch_patience", default=40, type=int, help="Early stopping patience epochs")
     parser.add_argument("--hidden_dim", default=64, type=int, help="Hidden layer dimension")
