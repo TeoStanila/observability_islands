@@ -1,23 +1,27 @@
-import os
-import sys
 import copy
 import json
+import logging
+import os
+import pickle
 import pprint
 import random
-import logging
+import sys
 from collections import defaultdict
 from warnings import filterwarnings
 
 import matplotlib.pyplot as plt
+import networkx as nx
+import numpy as np
 import pandapower as pp
 import pandapower.plotting as plot
-import tqdm
+import pandapower.topology as top
 import pandas as pd
+import tqdm
 from pandapower.toolbox import drop_buses
 from scipy.sparse.linalg import MatrixRankWarning
 
-from visualization_IEEE14 import load_record
 from generation_IEEE14 import observability_analysis
+from visualization_IEEE14 import load_record
 
 filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
 filterwarnings("ignore", category=MatrixRankWarning)
@@ -105,7 +109,7 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
         return False, None
     try:
         subnet = get_subnetwork(net, bus_ids, lines_to_drop, trafos_to_drop)
-        voltage_meas = subnet.measurement[subnet.measurement.element_type == "bus"]
+        voltage_meas = subnet.measurement[(subnet.measurement.element_type == "bus") & (subnet.measurement.measurement_type == "v")]
 
         if subnet.ext_grid is None:
             subnet.ext_grid = pp.create_empty_network().ext_grid
@@ -116,6 +120,13 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
             ref_vm = voltage_meas.iloc[0].value
             pp.create_ext_grid(subnet, bus=ref_bus, vm_pu=ref_vm, va_degree=0.0)
 
+        ref_bus = subnet.ext_grid.bus.iloc[0]
+        mg = top.create_nxgraph(subnet)
+        reachable = top.connected_component(mg, ref_bus)
+        isolated = set(subnet.bus.index) - set(reachable)
+        if isolated:
+            drop_buses(subnet, list(isolated))
+            measurement_cleanup(subnet)
 
         if len(subnet.bus) < 2:
             return False, None
@@ -176,7 +187,6 @@ def save_network_drawing(subnet, config_path):
                 if geo is not None and isinstance(geo, str):
                     coords = json.loads(geo)["coordinates"]
             
-            # Safe fallback just in case a bus lacks the "geo" string
             if coords is None:
                 geodata = getattr(subnet, "bus_geodata", None)
                 if geodata is not None and bus_id in geodata.index:
@@ -203,11 +213,13 @@ def save_network_drawing(subnet, config_path):
 
     return img_path
     
-def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=None, seen_configs=None):
+def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=None, seen_configs=None, global_successful=None):
     if isl_registry is None:
         isl_registry = {}
     if seen_configs == None:
         seen_configs = set()
+    if global_successful == None:
+        global_successful = set()
 
     buses = net.bus.index.tolist()
     uf = UnionFind(buses)
@@ -249,7 +261,6 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
 
     island_snapshots.append(uf)
 
-    
     raw_islands = {}
     for snapshot in island_snapshots:
         for members in snapshot.islands(buses).values():
@@ -259,14 +270,15 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
     measured_lines = set(flow_meas[flow_meas.element_type == "line"].element.tolist())
     measured_trafos = set(flow_meas[flow_meas.element_type == "trafo"].element.tolist())
 
-    candidate_islands = [isl for isl in raw_islands.keys() if len(isl) >= 2]
+    candidate_islands = [isl for isl in raw_islands.keys() if len(isl) >= 2 and len(isl) <= 13] 
     base_results = {isl: check_island(net, isl) for isl in candidate_islands}
     successful_islands = [isl for isl in candidate_islands if base_results[isl][0]]
+    global_successful.update(successful_islands)
 
     def redundant_island(island_buses):
         return any(
-            island_buses < other
-            for other in successful_islands
+            island_buses <= other
+            for other in global_successful
             if other != island_buses
         )
     
@@ -274,32 +286,52 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
         isl for isl in candidate_islands
         if not (base_results[isl][0] and redundant_island(isl))
     }
+    islands_to_process = set(islands_to_process)
     
     for island_buses in islands_to_process:
         if island_buses in isl_registry:
             continue
 
-        island_id = len(isl_registry)
-        isl_registry[island_buses] = island_id
-
-        start_sampling = 0
-        save_path = os.path.join("islands", dataset_dir, f"record_{record_id}", f"island_{island_id}")
-        if not os.path.exists(save_path):
-            os.makedirs(save_path)
-
         result, subnet = check_island(net, island_buses)
+
         if result:
+            actual_buses = frozenset(subnet.bus.index.tolist())
             lines = [f"{f}-{t}" for f, t in zip(subnet.line.from_bus, subnet.line.to_bus)]
             trafos = [f"{h}-{l}" for h, l in zip(subnet.trafo.hv_bus, subnet.trafo.lv_bus)]
 
-            config = (frozenset(island_buses), frozenset(lines), frozenset(trafos))
-            if config not in seen_configs:
-                seen_configs.add(config)
-                config_path = os.path.join(save_path, f"config_{start_sampling}.json")
-                pp.to_json(subnet, config_path)
-                image_path = save_network_drawing(subnet, config_path)
-                valid.append({"subnet_path": config_path, "buses": list(island_buses), "lines": lines, "trafos": trafos})
-                start_sampling += 1
+            if actual_buses in isl_registry:
+                isl_registry[island_buses] = isl_registry[actual_buses]
+                continue
+
+            config = (actual_buses, frozenset(lines), frozenset(trafos))
+            if config in seen_configs:
+                isl_registry[island_buses] = isl_registry.get(actual_buses, len(isl_registry))
+                continue
+
+            island_id = len(isl_registry)
+            isl_registry[island_buses] = island_id
+            isl_registry[actual_buses] = island_id
+
+            save_path = os.path.join("islands", dataset_dir, f"record_{record_id}", f"island_{island_id}")
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+
+            start_sampling = 0
+            seen_configs.add(config)
+            config_path = os.path.join(save_path, f"config_{start_sampling}.json")
+            pp.to_json(subnet, config_path)
+            save_network_drawing(subnet, config_path)
+            valid.append({"subnet_path": config_path, "buses": list(actual_buses), "lines": lines, "trafos": trafos})
+            start_sampling += 1
+            continue
+
+        island_id = len(isl_registry)
+        isl_registry[island_buses] = island_id
+
+        save_path = os.path.join("islands", dataset_dir, f"record_{record_id}", f"island_{island_id}")
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+        start_sampling = 0
 
 
         bus_set = set(island_buses)
@@ -317,7 +349,7 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
             max_attempts = samples_per_island * 3
             attempts = 0
 
-            while config_id < target_configs and attempts < max_attempts:
+            while attempts < max_attempts:
                 attempts += 1
                 config_path = os.path.join(save_path, f"config_{config_id}.json")
                 n_drop = random.randint(1, max(1, total_unmeas // 2))
@@ -348,7 +380,7 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
                                 "trafos": trafos,
                             })
                             config_id += 1
-                            
+                            break
 
     return valid
 
@@ -356,10 +388,11 @@ def sample_forest(net, samples_per_island=3, record_id="unknown", isl_registry=N
 def sample_configurations(net, n_samples=50, record_id="unknown"):
     configs = []
     isl_registry = {}
+    global_successful = set()
     seen_configs = set()
 
     for _ in range(n_samples):
-        islands = sample_forest(net, record_id=record_id, isl_registry=isl_registry, seen_configs=seen_configs)
+        islands = sample_forest(net, record_id=record_id, isl_registry=isl_registry, seen_configs=seen_configs, global_successful=global_successful)
         if len(islands) > 0:
             configs.extend(islands)
 
@@ -410,3 +443,103 @@ if __name__ == "__main__":
 
         if not os.listdir(current):
             os.rmdir(current)
+
+    for record in os.scandir(save_dir):
+        print(record)
+        if not record.is_dir():
+            continue
+
+        big_net = None
+
+        for island in os.scandir(record.path):
+            if not island.is_dir():
+                continue
+
+            config_path = os.path.join(island.path, "config_0.json")
+            if not os.path.exists(config_path):
+                continue
+
+            try:
+                new_net = pp.from_json(config_path)
+            except Exception as e:
+                print(f"failed on {island.path}: {e}")
+                continue
+
+            if big_net is None:
+                big_net = new_net
+            else:
+                big_net = pp.merge_nets(big_net, new_net, net2_reindex_log_level=None, std_prio_on_net1=True)
+
+        if big_net is None:
+            print("hmmm")
+            continue
+
+        out_json_path = os.path.join(record.path, "combined_net.json")
+        pp.to_json(big_net, out_json_path)
+
+        
+        big_graph = top.create_nxgraph(big_net)
+        node_features = []
+        for node in big_graph.nodes:
+            value = np.float32(0)
+            meas_type = ""
+            degree = big_graph.degree(node)
+            is_measured = False
+            node_data = big_net.measurement[(big_net.measurement.element_type == "bus") & (big_net.measurement.element == node)]
+
+            if node_data.shape[0] >= 1:
+                measurement = node_data.iloc[0]
+                value = measurement.value
+                meas_type = measurement.measurement_type
+                is_measured = True
+
+            node_features.append([value, meas_type, degree, is_measured])
+
+        node_features = np.array(node_features, dtype=object)
+        node_feature_nemas = ["value", "type", "degree", "is_measured"]
+
+        for j, name in enumerate(node_feature_nemas):
+            attrs = {i:node_features[i, j] for i in range(len(node_features))}
+            nx.set_node_attributes(big_graph, attrs, name=name)
+
+        edge_features = []
+        for edge in big_graph.edges(keys=True):
+            value = np.float32(0)
+            meas_type = ""
+            side = 0
+            is_measured = False
+
+            index = edge[2][1]
+
+            edge_data = big_net.measurement[
+                (big_net.measurement.element_type == "line") & (big_net.measurement.element == index)
+                |
+                (big_net.measurement.element_type == "trafo") & (big_net.measurement.element == index)
+            ]
+
+            if edge_data.shape[0] >= 1:
+                measurement = edge_data.iloc[0]
+                meas_type = measurement.measurement_type
+                value = measurement.value
+                if meas_type == "line":
+                    side = 1 if measurement.side == "from" or measurement.side == "hv" else 2
+                is_measured = True
+
+            edge_features.append([value, meas_type, side, is_measured])
+
+        edge_features = np.array(edge_features, dtype=object)
+        edgefeature_names = ["value", "type", "side", "is_measured"]
+        edges = list(big_graph.edges)
+
+        for j, name in enumerate(edgefeature_names):
+            attrs = {(edges[i][0], edges[i][1], edges[i][2]): edge_features[i, j] for i in range(len(edges))}
+            nx.set_edge_attributes(big_graph, attrs, name=name)
+
+        print(len(big_graph.nodes))
+        print("="*30)
+
+        graph_path = os.path.join(record.path, "combined_net.pkl")
+        with open(graph_path, "wb") as f:
+            pickle.dump(big_graph, f)
+
+        save_network_drawing(big_net, out_json_path)
