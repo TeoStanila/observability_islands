@@ -12,9 +12,9 @@ from pandapower.estimation import estimate
 DATASET_PATH = "IEEE14_datasets"
 
 def load_record(dataset, record_id):
-    path = os.path.join(DATASET_PATH, dataset, "observable", f"record_{record_id:04d}.json")
+    path = os.path.join(DATASET_PATH, dataset, "observable", f"record_{record_id}.json")
     if not os.path.exists(path):
-        path = os.path.join(DATASET_PATH, dataset, "unobservable", f"record_{record_id:04d}.json")
+        path = os.path.join(DATASET_PATH, dataset, "unobservable", f"record_{record_id}.json")
         if not os.path.exists(path):
             raise FileNotFoundError(f"File not found: {path}.")
     with open(path) as f:

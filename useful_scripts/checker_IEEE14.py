@@ -1,9 +1,10 @@
-import os
-import sys
 import argparse
 import json
-from tqdm import tqdm
+import os
+import sys
+
 import pandapower as pp
+from tqdm import tqdm
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 

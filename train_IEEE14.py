@@ -1,16 +1,16 @@
-import os
-import random
-import pickle
 import argparse
+import os
+import pickle
+import random
 from pathlib import Path
 
-import numpy as np
 import networkx as nx
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch_geometric.utils import negative_sampling
 from torch_geometric.nn import GATv2Conv
+from torch_geometric.utils import negative_sampling
 
 VOCAB = ['p', 'q', 'v']
 
@@ -27,33 +27,37 @@ def encode_attributes(attrs, type_vocab, node=True):
 
     return np.concatenate([numeric, type_onehot])
 
+def graph_to_tensors(graph, type_vocab=VOCAB):
+        node_list = list(graph.nodes())
+        node_to_idx = {node_id: idx for idx, node_id in enumerate(node_list)}
+        idx_to_node = {idx: node_id for idx, node_id in enumerate(node_list)}
+
+        edges_data = list(graph.edges(data=True))
+
+        if len(edges_data) > 0:
+            mapped_edges = [(node_to_idx[u], node_to_idx[v]) for u, v, _ in edges_data]
+            edge_index = torch.tensor(mapped_edges, dtype=torch.long).t().contiguous()
+            Y = np.stack([
+                encode_attributes(attr_dict, type_vocab, node=False)
+                for u, v, attr_dict in edges_data
+            ]).astype(np.float32)
+        else:
+            edge_index = torch.zeros((2, 0), dtype=torch.long)
+            Y = np.zeros((0, 6), dtype=np.float32)
+
+        X = np.stack([
+            encode_attributes(graph.nodes[node_id], type_vocab, node=True)
+            for node_id in node_list
+        ]).astype(np.float32)
+
+        return edge_index, X, Y, node_to_idx, idx_to_node
+    
+
 def load_graph(path, type_vocab=VOCAB):
     with open(path, "rb") as f:
         graph = pickle.load(f)
 
-    node_list = list(graph.nodes())
-    node_to_idx = {node_id: idx for idx, node_id in enumerate(node_list)}
-    idx_to_node = {idx: node_id for idx, node_id in enumerate(node_list)}
-
-    edges_data = list(graph.edges(data=True))
-
-    if len(edges_data) > 0:
-        mapped_edges = [(node_to_idx[u], node_to_idx[v]) for u, v, _ in edges_data]
-        edge_index = torch.tensor(mapped_edges, dtype=torch.long).t().contiguous()
-        Y = np.stack([
-            encode_attributes(attr_dict, type_vocab, node=False)
-            for u, v, attr_dict in edges_data
-        ]).astype(np.float32)
-    else:
-        edge_index = torch.zeros((2, 0), dtype=torch.long)
-        Y = np.zeros((0, 6), dtype=np.float32)
-
-    X = np.stack([
-        encode_attributes(graph.nodes[node_id], type_vocab, node=True)
-        for node_id in node_list
-    ]).astype(np.float32)
-
-    return edge_index, X, Y, node_to_idx, idx_to_node, graph
+    return *graph_to_tensors(graph, type_vocab=type_vocab), graph
 
 def list_graph_paths(dataset_dir):
     dataset_path = Path(dataset_dir)
@@ -62,8 +66,10 @@ def list_graph_paths(dataset_dir):
         paths = list(dataset_path.rglob("*.pkl"))
     return [str(p) for p in sorted(paths)]
 
-def build_island_label_cache(paths):
-    cache = {}
+def build_label_caches(paths):
+    island_cache = {}
+    obs_cache = {}
+
     for path in paths:
         with open(path, "rb") as f:
             graph = pickle.load(f)
@@ -71,13 +77,23 @@ def build_island_label_cache(paths):
         node_list = list(graph.nodes())
         node_to_idx = {node_id: idx for idx, node_id in enumerate(node_list)}
         
-        labels = torch.zeros(len(node_list), dtype=torch.long)
+        island_labels = torch.zeros(len(node_list), dtype=torch.long)
+        obs_labels = torch.zeros(len(node_list), dtype=torch.float32)
         for island_id, component in enumerate(nx.connected_components(graph)):
+            is_observable_island = len(component) > 1
             for node in component:
-                labels[node_to_idx[node]] = island_id
-                
-        cache[path] = labels
-    return cache
+                idx = node_to_idx[node]
+                island_labels[idx] = island_id
+
+                if is_observable_island:
+                    obs_labels[idx] = 1.0
+                else:
+                    obs_labels[idx] = 0.0
+
+        island_cache[path] = island_labels
+        obs_cache[path] = obs_labels
+
+    return island_cache, obs_cache
 
 class GVAEncoder(nn.Module):
     def __init__(self, in_dim, hidden_dim, latent_dim, edge_dim):
@@ -105,11 +121,19 @@ class GVAEncoder(nn.Module):
         return z, mean, logvar
 
 class GVADecoder(nn.Module):
-    def __init__(self):
+    def __init__(self, latent_dim):
         super().__init__()
+        self.node_obs_head = nn.Sequential(
+            nn.Linear(latent_dim, latent_dim),
+            nn.ReLU(),
+            nn.Linear(latent_dim, 1)
+        )
 
-    def forward(self, z):
+    def forward_edge(self, z):
         return torch.matmul(z, z.t())
+    
+    def forward_node(self, z):
+        return self.node_obs_head(z).squeeze(-1)
 
 def edge_island_targets(edge_index, island_labels):
     src, dst = edge_index[0], edge_index[1]
@@ -126,10 +150,11 @@ def sample_negative_pairs(edge_index, island_labels, num_nodes, num_samples):
     neg_labels = torch.zeros(neg_edge_index.shape[1], device=neg_edge_index.device)
     return neg_edge_index, neg_labels
 
-def run_epoch(encoder, decoder, paths, beta, island_label_cache, device, optimizer=None, pos_weight=None, extra_neg_ratio=1.0):
+def run_epoch(encoder, decoder, paths, beta, gamma, island_label_cache, obs_label_cache, device, optimizer=None, pos_weight=None, extra_neg_ratio=1.0):
     def train_step(path):
         edge_index, X, Y, _, _, _ = load_graph(path)
         island_labels = island_label_cache[path].to(device)
+        obs_labels = obs_label_cache[path].to(device)
         
         X = torch.tensor(X, dtype=torch.float32, device=device)
         Y = torch.tensor(Y, dtype=torch.float32, device=device)
@@ -152,8 +177,12 @@ def run_epoch(encoder, decoder, paths, beta, island_label_cache, device, optimiz
         else:
             recon_loss = F.binary_cross_entropy_with_logits(scores, labels)
 
+        node_logits = decoder.forward_node(Z)
+        node_obs_loss = F.binary_cross_entropy_with_logits(node_logits, obs_labels)
+
         kl_loss = -0.5 * torch.mean(1 + logvar - logvar.exp() - mean.pow(2))
-        loss = recon_loss + beta * kl_loss
+
+        loss = recon_loss + (beta * kl_loss) + (gamma * node_obs_loss)
 
         if optimizer is not None:
             optimizer.zero_grad()
@@ -174,7 +203,7 @@ def run_epoch(encoder, decoder, paths, beta, island_label_cache, device, optimiz
         
     return total_loss / max(1, len(paths))
 
-def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16, epochs=500, beta=0.001, max_patience=50, extra_neg_ratio=1.0, pos_weight=None, lr=1e-3, weight_decay=1e-4):
+def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16, epochs=500, beta=0.001, gamma=1.0, max_patience=50, extra_neg_ratio=1.0, pos_weight=None, lr=1e-3, weight_decay=1e-4):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using compute device: {device}")
 
@@ -183,8 +212,8 @@ def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16
         raise FileNotFoundError(f"No valid .pkl graph files found in {dataset_dir}")
         
     print(f"Found {len(paths)} graph files. Generating island labels directly from pickles...")
-    island_label_cache = build_island_label_cache(paths)
-    print("Done building cache.")
+    island_label_cache, obs_label_cache = build_label_caches(paths)
+    print("Done building caches.")
 
     random.shuffle(paths)
     cut = int(0.85 * len(paths))
@@ -195,7 +224,7 @@ def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16
     in_dim, edge_dim = X.shape[1], Y.shape[1]
 
     encoder = GVAEncoder(in_dim, hidden_dim, latent_dim, edge_dim).to(device)
-    decoder = GVADecoder().to(device)
+    decoder = GVADecoder(latent_dim).to(device)
     
     optimizer = torch.optim.Adam(
         params=list(encoder.parameters()) + list(decoder.parameters()),
@@ -209,8 +238,8 @@ def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16
     best_model_file = os.path.join(save_path, 'gvae_best.pth')
 
     for epoch in range(1, epochs + 1):
-        train_loss = run_epoch(encoder, decoder, train_paths, beta, island_label_cache, device, optimizer=optimizer, pos_weight=pos_weight, extra_neg_ratio=extra_neg_ratio)
-        val_loss = run_epoch(encoder, decoder, val_paths, beta, island_label_cache, device, optimizer=None, pos_weight=pos_weight, extra_neg_ratio=extra_neg_ratio)
+        train_loss = run_epoch(encoder, decoder, train_paths, beta, gamma, island_label_cache, obs_label_cache, device, optimizer=optimizer, pos_weight=pos_weight, extra_neg_ratio=extra_neg_ratio)
+        val_loss = run_epoch(encoder, decoder, val_paths, beta, gamma, island_label_cache, obs_label_cache, device, optimizer=None, pos_weight=pos_weight, extra_neg_ratio=extra_neg_ratio)
         
         scheduler.step(val_loss)
         
@@ -247,6 +276,7 @@ if __name__ == "__main__":
     parser.add_argument("--hidden_dim", default=64, type=int, help="Hidden layer dimension")
     parser.add_argument("--latent_dim", default=16, type=int, help="Latent embedding dimension")
     parser.add_argument("--beta", default=0.001, type=float, help="KL divergence regularization weight")
+    parser.add_argument("--gamma", default=1, type=float, help="Node observability loss weight")
     parser.add_argument("--extra_neg_ratio", default=1.0, type=float, help="Ratio of negative edges sampled per graph")
     parser.add_argument("--lr", default=1e-3, type=float, help="Learning rate")
     
@@ -259,6 +289,7 @@ if __name__ == "__main__":
         latent_dim=args.latent_dim,
         epochs=args.epochs,
         beta=args.beta,
+        gamma=args.gamma,
         max_patience=args.batch_patience,
         extra_neg_ratio=args.extra_neg_ratio,
         lr=args.lr

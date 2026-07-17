@@ -1,3 +1,4 @@
+import argparse
 import copy
 import json
 import logging
@@ -5,7 +6,6 @@ import os
 import pickle
 import pprint
 import random
-import argparse
 from collections import defaultdict
 from warnings import filterwarnings
 
@@ -16,11 +16,11 @@ import pandapower as pp
 import pandapower.plotting as plot
 import pandapower.topology as top
 import pandas as pd
-import tqdm
 from pandapower.toolbox import drop_buses
 from scipy.sparse.linalg import MatrixRankWarning
+from tqdm import tqdm
 
-from generation_IEEE14 import observability_analysis
+from generation_IEEE14 import create_measured_graph, observability_analysis
 from visualization_IEEE14 import load_record
 
 filterwarnings("ignore", category=pd.errors.SettingWithCopyWarning)
@@ -378,7 +378,7 @@ if __name__ == "__main__":
         if not os.path.exists(os.path.join(save_dir, f"record_{record}")):
             os.makedirs(os.path.join(save_dir, f"record_{record}"))
 
-    for record_id in tqdm.tqdm(range(n_files), desc="Sampling island configurations"):
+    for record_id in tqdm(range(n_files), desc="Sampling island configurations"):
         record = load_record(dataset_dir, record_id)
         if record["observable"]:
             continue
@@ -402,7 +402,9 @@ if __name__ == "__main__":
         if not os.listdir(current):
             os.rmdir(current)
 
-    for record in os.scandir(save_dir):
+    total = sum(1 for _ in os.scandir(save_dir))
+
+    for record in tqdm(os.scandir(save_dir), total=total, desc="Creating pkls for each island configuration"):
         if not record.is_dir():
             continue
 
@@ -433,63 +435,7 @@ if __name__ == "__main__":
         out_json_path = os.path.join(record.path, "combined_net.json")
         pp.to_json(big_net, out_json_path)
         
-        big_graph = top.create_nxgraph(big_net)
-        node_features = []
-        for node in big_graph.nodes:
-            value = np.float32(0)
-            meas_type = ""
-            degree = big_graph.degree(node)
-            is_measured = False
-            node_data = big_net.measurement[(big_net.measurement.element_type == "bus") & (big_net.measurement.element == node)]
-
-            if node_data.shape[0] >= 1:
-                measurement = node_data.iloc[0]
-                value = measurement.value
-                meas_type = measurement.measurement_type
-                is_measured = True
-
-            node_features.append([value, meas_type, degree, is_measured])
-
-        node_features = np.array(node_features, dtype=object)
-        node_feature_nemas = ["value", "type", "degree", "is_measured"]
-
-        for j, name in enumerate(node_feature_nemas):
-            attrs = {i:node_features[i, j] for i in range(len(node_features))}
-            nx.set_node_attributes(big_graph, attrs, name=name)
-
-        edge_features = []
-        for edge in big_graph.edges(keys=True):
-            value = np.float32(0)
-            meas_type = ""
-            side = 0
-            is_measured = False
-
-            index = edge[2][1]
-
-            edge_data = big_net.measurement[
-                (big_net.measurement.element_type == "line") & (big_net.measurement.element == index)
-                |
-                (big_net.measurement.element_type == "trafo") & (big_net.measurement.element == index)
-            ]
-
-            if edge_data.shape[0] >= 1:
-                measurement = edge_data.iloc[0]
-                meas_type = measurement.measurement_type
-                value = measurement.value
-                if meas_type == "line":
-                    side = 1 if measurement.side == "from" or measurement.side == "hv" else 2
-                is_measured = True
-
-            edge_features.append([value, meas_type, side, is_measured])
-
-        edge_features = np.array(edge_features, dtype=object)
-        edgefeature_names = ["value", "type", "side", "is_measured"]
-        edges = list(big_graph.edges)
-
-        for j, name in enumerate(edgefeature_names):
-            attrs = {(edges[i][0], edges[i][1], edges[i][2]): edge_features[i, j] for i in range(len(edges))}
-            nx.set_edge_attributes(big_graph, attrs, name=name)
-
+        big_graph = create_measured_graph(big_net)
 
         graph_path = os.path.join(record.path, "combined_net.pkl")
         with open(graph_path, "wb") as f:

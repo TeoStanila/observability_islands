@@ -1,19 +1,22 @@
+import argparse
 import copy
 import json
 import logging
 import os
+import pickle
 import random
 import sys
 import warnings
-import argparse
 from dataclasses import dataclass, field
 
 import matplotlib.pyplot as plt
+import networkx as nx
 import numpy as np
 import pandapower as pp
 import pandapower.converter as pc
 import pandapower.networks as nw
 import pandapower.plotting as plot
+import pandapower.topology as top
 import pandas as pd
 from pandapower.estimation import estimate
 from pandapower.estimation.algorithm.matrix_base import BaseAlgebra
@@ -207,7 +210,7 @@ def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
     no_unobservable = 0
     patience = 0
     
-    with tqdm(total=no_samples, desc="Generating observability dataset") as pbar: 
+    with tqdm(total=no_samples, desc="Generating measured networks") as pbar: 
         while len(records) < no_samples and patience < max_patience:
             measurements = sample_measurement_configuration(candidates, keep_prob_range)
             key = frozenset((m["element_type"], m["element"], m["side"]) for m in measurements)
@@ -263,6 +266,68 @@ def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
         
     return records, candidates
 
+def create_measured_graph(net):
+
+    graph = top.create_nxgraph(net)
+    node_features = []
+    for node in graph.nodes:
+        value = np.float32(0)
+        meas_type = ""
+        degree = graph.degree(node)
+        is_measured = False
+        node_data = net.measurement[(net.measurement.element_type == "bus") & (net.measurement.element == node)]
+
+        if node_data.shape[0] >= 1:
+            measurement = node_data.iloc[0]
+            value = measurement.value
+            meas_type = measurement.measurement_type
+            is_measured = True
+
+        node_features.append([value, meas_type, degree, is_measured])
+
+    node_features = np.array(node_features, dtype=object)
+    node_feature_nemas = ["value", "type", "degree", "is_measured"]
+
+    for j, name in enumerate(node_feature_nemas):
+        attrs = {i:node_features[i, j] for i in range(len(node_features))}
+        nx.set_node_attributes(graph, attrs, name=name)
+
+    edge_features = []
+    for edge in graph.edges(keys=True):
+        value = np.float32(0)
+        meas_type = ""
+        side = 0
+        is_measured = False
+
+        index = edge[2][1]
+
+        edge_data = net.measurement[
+            (net.measurement.element_type == "line") & (net.measurement.element == index)
+            |
+            (net.measurement.element_type == "trafo") & (net.measurement.element == index)
+        ]
+
+        if edge_data.shape[0] >= 1:
+            measurement = edge_data.iloc[0]
+            meas_type = measurement.measurement_type
+            value = measurement.value
+            if meas_type == "line":
+                side = 1 if measurement.side == "from" or measurement.side == "hv" else 2
+            is_measured = True
+
+        edge_features.append([value, meas_type, side, is_measured])
+
+    edge_features = np.array(edge_features, dtype=object)
+    edgefeature_names = ["value", "type", "side", "is_measured"]
+    edges = list(graph.edges)
+
+    for j, name in enumerate(edgefeature_names):
+        attrs = {(edges[i][0], edges[i][1], edges[i][2]): edge_features[i, j] for i in range(len(edges))}
+        nx.set_edge_attributes(graph, attrs, name=name)
+
+    return graph
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Generate measured networks from IEEE-14 dataset")
@@ -296,10 +361,19 @@ if __name__ == "__main__":
     with open(os.path.join(folder_name, save_name, "candidates.json"), "w") as f:
         json.dump(candidates, f, indent=2)
 
-    for i, record in enumerate(records):
+    total = sum(1 for _, _ in enumerate(records))
+
+    for i, record in tqdm(enumerate(records), total=total, desc="Creating measured graphs"):
         if record["observable"]:
-            record_path = os.path.join(folder_name, save_name, "observable", f"record_{i:04d}.json")
+            record_path = os.path.join(folder_name, save_name, "observable", f"record_{i}.json")
+            graph_path = os.path.join(folder_name, save_name, "observable", f"record_{i}.pkl")
         else:
-            record_path = os.path.join(folder_name, save_name, "unobservable", f"record_{i:04d}.json")
+            record_path = os.path.join(folder_name, save_name, "unobservable", f"record_{i}.json")
+            graph_path = os.path.join(folder_name, save_name, "unobservable", f"record_{i}.pkl")
         with open(record_path, "w") as f:
             json.dump(record, f)
+
+        net = pp.from_json(record["net_json"])
+        graph = create_measured_graph(net)
+        with open(graph_path, "wb") as f:
+            pickle.dump(graph, f)
