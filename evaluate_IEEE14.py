@@ -27,9 +27,7 @@ def infer_predicted_islands(encoder, decoder, path, device, node_threshold=0.5, 
         active_nodes = set(
             idx_to_node[i] for i, prob in enumerate(node_probs) if prob >= node_threshold
         )
-        print("="*30)
-        print(active_nodes)
-        print("="*30)
+
         
         edge_scores = (Z[edge_index_tensor[0]] * Z[edge_index_tensor[1]]).sum(dim=1)
         edge_probs = torch.sigmoid(edge_scores).cpu().numpy()
@@ -102,6 +100,13 @@ def evaluate_dataset(dataset_dir, model_path, node_thresh=0.5, edge_thresh=0.5):
             total_islands_predicted += 1
             
             island_net = get_subnetwork(net, island_buses)
+            if len(island_net.ext_grid) == 0:
+                voltage_meas = island_net.measurement[(island_net.measurement.measurement_type == "v") & (island_net.measurement.element_type == "bus")]
+                if len(voltage_meas) == 0:
+                    continue
+                ref_bus = voltage_meas.iloc[0].element
+                ref_vm = voltage_meas.iloc[0].value
+                pp.create_ext_grid(island_net, bus=ref_bus, vm_pu=ref_vm, va_degree=0.0)
             try:
                 obs_result = observability_analysis(island_net)
                 total_rank_deficiency += obs_result.rank_deficiency
