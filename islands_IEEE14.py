@@ -116,6 +116,7 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
         if len(subnet.ext_grid) == 0:
             if len(voltage_meas) == 0:
                 return False, None
+            print("HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEY")
             ref_bus = voltage_meas.iloc[0].element
             ref_vm = voltage_meas.iloc[0].value
             pp.create_ext_grid(subnet, bus=ref_bus, vm_pu=ref_vm, va_degree=0.0)
