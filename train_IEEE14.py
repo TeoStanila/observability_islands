@@ -2,6 +2,7 @@ import argparse
 import os
 import pickle
 import random
+import pprint
 from pathlib import Path
 
 import networkx as nx
@@ -66,32 +67,48 @@ def list_graph_paths(dataset_dir):
         paths = list(dataset_path.rglob("*.pkl"))
     return [str(p) for p in sorted(paths)]
 
-def build_label_caches(paths):
+def sync_network_island_paths(dataset_dir, islands_dir):
+    full_paths = list_graph_paths(dataset_dir)
+    pairs = []
+    for path in full_paths:
+        record_name = Path(path).name
+        island_dir_for_record = Path(islands_dir) / record_name[:-4]
+        if os.path.exists(island_dir_for_record):
+            island_matches = sorted(os.path.join(island_dir_for_record, file) for file in os.listdir(island_dir_for_record) if str(file).endswith(".pkl"))
+        else:
+            continue
+        if island_matches:
+            pairs.append((path, str(island_matches[0])))
+    return pairs
+
+def build_label_caches(pairs):
     island_cache = {}
     obs_cache = {}
 
-    for path in paths:
-        with open(path, "rb") as f:
-            graph = pickle.load(f)
-            
-        node_list = list(graph.nodes())
+    for full_path, island_path in pairs:
+        with open(full_path, "rb") as f:
+            full_graph = pickle.load(f)
+        with open(island_path, "rb") as f:
+            island_graph = pickle.load(f)
+
+        node_list = list(full_graph.nodes())
         node_to_idx = {node_id: idx for idx, node_id in enumerate(node_list)}
-        
-        island_labels = torch.zeros(len(node_list), dtype=torch.long)
+
+        island_labels = torch.full((len(node_list),), -1, dtype=torch.long)
         obs_labels = torch.zeros(len(node_list), dtype=torch.float32)
-        for island_id, component in enumerate(nx.connected_components(graph)):
-            is_observable_island = len(component) > 1
+
+        for island_id, component in enumerate(nx.connected_components(island_graph)):
+            if len(component) <= 1:
+                continue
             for node in component:
-                idx = node_to_idx[node]
+                idx = node_to_idx.get(node)
+                if idx is None:
+                    continue
                 island_labels[idx] = island_id
+                obs_labels[idx] = 1.0
 
-                if is_observable_island:
-                    obs_labels[idx] = 1.0
-                else:
-                    obs_labels[idx] = 0.0
-
-        island_cache[path] = island_labels
-        obs_cache[path] = obs_labels
+        island_cache[full_path] = island_labels
+        obs_cache[full_path] = obs_labels
 
     return island_cache, obs_cache
 
@@ -203,16 +220,17 @@ def run_epoch(encoder, decoder, paths, beta, gamma, island_label_cache, obs_labe
         
     return total_loss / max(1, len(paths))
 
-def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16, epochs=500, beta=0.001, gamma=1.0, max_patience=50, extra_neg_ratio=1.0, pos_weight=None, lr=1e-3, weight_decay=1e-4):
+def full_training(dataset_dir: str, islands_dir: str, save_path: str, hidden_dim=64, latent_dim=16, epochs=500, beta=0.001, gamma=1.0, max_patience=50, extra_neg_ratio=1.0, pos_weight=None, lr=1e-3, weight_decay=1e-4):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Using compute device: {device}")
 
-    paths = list_graph_paths(dataset_dir)
-    if not paths:
-        raise FileNotFoundError(f"No valid .pkl graph files found in {dataset_dir}")
-        
-    print(f"Found {len(paths)} graph files. Generating island labels directly from pickles...")
-    island_label_cache, obs_label_cache = build_label_caches(paths)
+    pairs = sync_network_island_paths(dataset_dir, islands_dir)
+    if not pairs:
+        raise FileNotFoundError(f"No valid pairs found between {dataset_dir} and {islands_dir}")
+
+    paths = [path for path, _ in pairs]
+    print(f"Found {len(paths)} graph files. Generating observable and island labels directly from pickles...")
+    island_label_cache, obs_label_cache = build_label_caches(pairs)
     print("Done building caches.")
 
     random.shuffle(paths)
@@ -270,6 +288,7 @@ def full_training(dataset_dir: str, save_path: str, hidden_dim=64, latent_dim=16
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train Graph Variational Autoencoder for IEEE-14 Dataset")
     parser.add_argument("--dataset_dir", required=True, type=str, help="Dataset directory")
+    parser.add_argument("--islands_dir", required=True, type=str, help="Dataset directory")
     parser.add_argument("--save_path", default="./checkpoints/IEEE_14", type=str, help="Save directory")
     parser.add_argument("--epochs", default=300, type=int, help="Maximum number of training epochs")
     parser.add_argument("--batch_patience", default=40, type=int, help="Early stopping epochs")
@@ -284,6 +303,7 @@ if __name__ == "__main__":
 
     full_training(
         dataset_dir=args.dataset_dir,
+        islands_dir=args.islands_dir,
         save_path=args.save_path,
         hidden_dim=args.hidden_dim,
         latent_dim=args.latent_dim,

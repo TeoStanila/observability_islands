@@ -427,7 +427,7 @@ if __name__ == "__main__":
             if big_net is None:
                 big_net = new_net
             else:
-                big_net = pp.merge_nets(big_net, new_net, net2_reindex_log_level=None, std_prio_on_net1=True, validate=False)
+                big_net = pp.toolbox.merge_nets(big_net, new_net, net2_reindex_log_level=None, std_prio_on_net1=True, validate=False)
 
         if big_net is None:
             continue
