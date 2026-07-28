@@ -12,7 +12,7 @@ from islands_IEEE14 import get_subnetwork
 from gvae_gcn import GVAEncoder, GVADecoder, load_graph, list_graph_paths
 
 
-def infer_predicted_islands(encoder, decoder, path, device, node_threshold=0.5, edge_threshold=0.5):
+def infer_islands(encoder, decoder, path, device, node_threshold=0.5, edge_threshold=0.5):
     edge_index, X, Y, _, idx_to_node, graph = load_graph(path)
     
     X_tensor = torch.tensor(X, dtype=torch.float32, device=device)
@@ -28,7 +28,6 @@ def infer_predicted_islands(encoder, decoder, path, device, node_threshold=0.5, 
             idx_to_node[i] for i, prob in enumerate(node_probs) if prob >= node_threshold
         )
 
-        
         edge_scores = (Z[edge_index_tensor[0]] * Z[edge_index_tensor[1]]).sum(dim=1)
         edge_probs = torch.sigmoid(edge_scores).cpu().numpy()
         
@@ -77,6 +76,10 @@ def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, 
     total_islands_predicted = 0
     total_observable_islands = 0
     total_rank_deficiency = 0
+    total_island_size = 0
+
+    network_coverage = 0
+    total_network_coverage = 0
     
     for idx, path in enumerate(paths, 1):
         pkl_path = Path(path)
@@ -94,13 +97,15 @@ def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, 
             print(f"[{idx:03d}/{len(paths):03d}] Error loading {json_path.name}: {e}")
             continue
 
-        predicted_islands = infer_predicted_islands(
+        predicted_islands = infer_islands(
             encoder, decoder, path, device, node_thresh, edge_thresh
         )
             
         file_obs_count = 0
         for island_buses in predicted_islands:
             total_islands_predicted += 1
+            total_island_size += len(island_buses)
+            network_coverage += len(island_buses)
             
             island_net = get_subnetwork(net, island_buses)
             if len(island_net.ext_grid) == 0:
@@ -119,11 +124,16 @@ def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, 
                     file_obs_count += 1
             except Exception as e:
                 print(f"  Error running observability analysis on island {island_buses}: {e}")
-
+        
+        if len(predicted_islands) > 0:
+            total_network_coverage += network_coverage / len(net.bus)
+        network_coverage = 0
         print(f"[{idx:03d}/{len(paths):03d}] {Path(path).name} | Islands: {len(predicted_islands)} | Observable: {file_obs_count}")
 
     accuracy = (total_observable_islands / total_islands_predicted * 100) if total_islands_predicted > 0 else 0.0
     avg_deficiency = (total_rank_deficiency / total_islands_predicted) if total_islands_predicted > 0 else 0.0
+    avg_island_size = (total_island_size / total_islands_predicted) if total_islands_predicted > 0 else 0.0
+    avg_network_coverage = (total_network_coverage / len(paths))
     
     print("\n" + "="*50)
     print("EVALUATION RESULTS")
@@ -132,6 +142,8 @@ def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, 
     print(f"Total Predicted Islands:     {total_islands_predicted}")
     print(f"Verified Observable Islands: {total_observable_islands} ({accuracy:.2f}%)")
     print(f"Average Rank Deficiency:     {avg_deficiency:.4f}")
+    print(f"Average Island Size:     {avg_island_size:.4f}")
+    print(f"Average Network Coverage:     {avg_network_coverage*100:.4f}%")
     print("="*50)
 
 if __name__ == "__main__":

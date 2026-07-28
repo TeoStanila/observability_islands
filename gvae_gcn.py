@@ -130,11 +130,10 @@ class GVAEncoder(nn.Module):
         x = self.node_norm(x)
         edge_attr = self.edge_norm(edge_attr)
 
-        # h = F.elu(self.conv1(x, edge_index, edge_attr))
         h = F.elu(self.conv1(x, edge_index))
         h = F.elu(self.conv2(h, edge_index))
         h = F.elu(self.conv3(h, edge_index))
-        h = F.elu(self.conv4(h, edge_index))
+        
         mean = self.conv_mu(h, edge_index, edge_attr)
         logvar = self.conv_logvar(h, edge_index, edge_attr)
 
