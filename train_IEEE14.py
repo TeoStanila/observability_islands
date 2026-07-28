@@ -13,7 +13,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch_geometric.nn import GATv2Conv
-from torch_geometric.utils import negative_sampling
 
 from gvae_gcn import (
     GVAEncoder,
@@ -196,3 +195,6 @@ if __name__ == "__main__":
             node_thresh=0.5,
             edge_thresh=0.5,
         )
+
+        from baseline_IEEE14 import evaluate_baseline
+        evaluate_baseline(test_paths)
