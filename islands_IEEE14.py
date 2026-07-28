@@ -116,7 +116,6 @@ def check_island(net, bus_ids, lines_to_drop=None, trafos_to_drop=None):
         if len(subnet.ext_grid) == 0:
             if len(voltage_meas) == 0:
                 return False, None
-            print("HEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEY")
             ref_bus = voltage_meas.iloc[0].element
             ref_vm = voltage_meas.iloc[0].value
             pp.create_ext_grid(subnet, bus=ref_bus, vm_pu=ref_vm, va_degree=0.0)
@@ -381,11 +380,24 @@ if __name__ == "__main__":
 
     for record_id in tqdm(range(n_files), desc="Sampling island configurations"):
         record = load_record(dataset_dir, record_id)
-        if record["observable"]:
-            continue
         net = pp.from_json_string(record["net_json"])
 
-        configs = sample_configurations(net, n_samples=50, record_id=str(record_id))
+        if record["observable"]:
+            save_path = os.path.join("islands", dataset_dir, f"record_{record_id}", f"island_0")
+            if not os.path.exists(save_path):
+                os.makedirs(save_path)
+            config_path = os.path.join(save_path, "config_0.json")
+            pp.to_json(net, config_path)
+            save_network_drawing(net, config_path)
+            configs = {
+                "subnet_path": config_path,
+                "buses": net.bus.index.tolist(),
+                "lines": [f"{f}-{t}" for f, t in zip(net.line.from_bus, net.line.to_bus)],
+                "trafos": [f"{h}-{l}" for h, l in zip(net.trafo.hv_bus, net.trafo.lv_bus)],
+            }
+        else:
+            configs = sample_configurations(net, n_samples=50, record_id=str(record_id))
+
         if len(configs) > 0:
             all_results[int(record_id)] = {
                 "observable": False,
@@ -405,7 +417,7 @@ if __name__ == "__main__":
 
     total = sum(1 for _ in os.scandir(save_dir))
 
-    for record in tqdm(os.scandir(save_dir), total=total, desc="Creating pkls for each island configuration"):
+    for record in tqdm(os.scandir(save_dir), total=total, desc="Creating pkls for each network configuration"):
         if not record.is_dir():
             continue
 

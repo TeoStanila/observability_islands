@@ -333,10 +333,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate measured networks from IEEE-14 dataset")
     parser.add_argument("--dataset_name", required=True, type=str, help="Name for dataset directory")
     parser.add_argument("--no_samples", required=True, type=int, help="Number of samples to generate")
+    parser.add_argument("--dataset_balance", type=float, default=0.3, help="Ratio of observable configurations")
     args = parser.parse_args()
 
 
     no_samples = args.no_samples
+    dataset_balance = args.dataset_balance
 
     folder_name = "IEEE14_datasets"
     if not os.path.exists(folder_name):
@@ -346,7 +348,7 @@ if __name__ == "__main__":
     records, candidates = generate_dataset(
         no_samples=no_samples,
         keep_prob_range=(0.15, 1.0),
-        dataset_balance=0.5,
+        dataset_balance=dataset_balance,
     )
 
     if not os.path.exists(os.path.join(folder_name, save_name)):

@@ -9,7 +9,7 @@ import torch
 
 from generation_IEEE14 import observability_analysis
 from islands_IEEE14 import get_subnetwork
-from train_IEEE14 import GVAEncoder, GVADecoder, load_graph, list_graph_paths
+from gvae_gcn import GVAEncoder, GVADecoder, load_graph, list_graph_paths
 
 
 def infer_predicted_islands(encoder, decoder, path, device, node_threshold=0.5, edge_threshold=0.5):
@@ -46,7 +46,7 @@ def infer_predicted_islands(encoder, decoder, path, device, node_threshold=0.5, 
     
     return predicted_islands
 
-def evaluate_dataset(dataset_dir, model_path, node_thresh=0.5, edge_thresh=0.5):
+def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, edge_thresh=0.5):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running evaluation on device: {device}")
     
@@ -65,11 +65,14 @@ def evaluate_dataset(dataset_dir, model_path, node_thresh=0.5, edge_thresh=0.5):
     encoder.eval()
     decoder.eval()
     
-    paths = list_graph_paths(dataset_dir)
-    if not paths:
-        raise FileNotFoundError(f"No valid .pkl files found in {dataset_dir}")
-        
-    print(f"Found {len(paths)} files to evaluate.\n")
+    if eval_paths is None:
+        paths = list_graph_paths(dataset_dir)
+        if not paths:
+            raise FileNotFoundError(f"No valid .pkl files found in {dataset_dir}")
+    else:
+        paths = eval_paths
+
+    print(f"Found {len(paths)} files to evaluate.")
     
     total_islands_predicted = 0
     total_observable_islands = 0
