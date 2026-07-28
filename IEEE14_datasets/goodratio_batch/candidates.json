@@ -1,0 +1,734 @@
+[
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 0,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 0,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 0,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 1,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 1,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 1,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 2,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 2,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 2,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 3,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 3,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 3,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 4,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 4,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 4,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 5,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 5,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 5,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 6,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 6,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 6,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 7,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 7,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 7,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 8,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 8,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 8,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 9,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 9,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 9,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 10,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 10,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 10,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 11,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 11,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 11,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 12,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 12,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 12,
+    "side": null
+  },
+  {
+    "meas_type": "v",
+    "element_type": "bus",
+    "element": 13,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "bus",
+    "element": 13,
+    "side": null
+  },
+  {
+    "meas_type": "q",
+    "element_type": "bus",
+    "element": 13,
+    "side": null
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 0,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 0,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 0,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 0,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 1,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 1,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 1,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 1,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 2,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 2,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 2,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 2,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 3,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 3,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 3,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 3,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 4,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 4,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 4,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 4,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 5,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 5,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 5,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 5,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 6,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 6,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 6,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 6,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 7,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 7,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 7,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 7,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 8,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 8,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 8,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 8,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 9,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 9,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 9,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 9,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 10,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 10,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 10,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 10,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 11,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 11,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 11,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 11,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 12,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 12,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 12,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 12,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 13,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 13,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 13,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 13,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 14,
+    "side": "from"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 14,
+    "side": "from"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "line",
+    "element": 14,
+    "side": "to"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "line",
+    "element": 14,
+    "side": "to"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 0,
+    "side": "hv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 0,
+    "side": "hv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 0,
+    "side": "lv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 0,
+    "side": "lv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 1,
+    "side": "hv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 1,
+    "side": "hv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 1,
+    "side": "lv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 1,
+    "side": "lv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 2,
+    "side": "hv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 2,
+    "side": "hv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 2,
+    "side": "lv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 2,
+    "side": "lv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 3,
+    "side": "hv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 3,
+    "side": "hv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 3,
+    "side": "lv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 3,
+    "side": "lv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 4,
+    "side": "hv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 4,
+    "side": "hv"
+  },
+  {
+    "meas_type": "p",
+    "element_type": "trafo",
+    "element": 4,
+    "side": "lv"
+  },
+  {
+    "meas_type": "q",
+    "element_type": "trafo",
+    "element": 4,
+    "side": "lv"
+  }
+]
