@@ -55,8 +55,18 @@ def null_space_vectors(H, rank_tol=1e-8):
 
     return vh[null_mask, :].T
 
-def reset_network():
-    net = nw.case14()
+def reset_network(case=None):
+    if case is None or case == 14:
+        net = nw.case14()
+    elif case == 30:
+        net = nw.case30()
+    elif case == 39:
+        net = nw.case39()
+    elif case == 57:
+        net = nw.case57()
+    elif case == 118:
+        net = nw.case118()
+
     pp.runpp(net)
 
     return net
@@ -200,8 +210,8 @@ def observability_analysis(net, rank_tol=1e-8):
     )
 
 def generate_dataset(no_samples=1000, keep_prob_range=(0.15, 1),
-                                dataset_balance=0.5, max_patience=500):
-    base_net = reset_network()
+                                dataset_balance=0.5, max_patience=500, case=None):
+    base_net = reset_network(case)
     candidates = candidate_measurements(base_net)
 
     seen = set()
@@ -334,11 +344,13 @@ if __name__ == "__main__":
     parser.add_argument("--dataset_name", required=True, type=str, help="Name for dataset directory")
     parser.add_argument("--no_samples", required=True, type=int, help="Number of samples to generate")
     parser.add_argument("--dataset_balance", type=float, default=0.3, help="Ratio of observable configurations")
+    parser.add_argument("--case", type=float, default=0.3, help="Network to generate configurations from")
     args = parser.parse_args()
 
 
     no_samples = args.no_samples
     dataset_balance = args.dataset_balance
+    case = args.case
 
     folder_name = "IEEE14_datasets"
     if not os.path.exists(folder_name):
@@ -349,6 +361,7 @@ if __name__ == "__main__":
         no_samples=no_samples,
         keep_prob_range=(0.15, 1.0),
         dataset_balance=dataset_balance,
+        case=case
     )
 
     if not os.path.exists(os.path.join(folder_name, save_name)):
