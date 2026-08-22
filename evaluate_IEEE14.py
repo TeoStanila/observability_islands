@@ -45,7 +45,7 @@ def infer_islands(encoder, decoder, path, device, node_threshold=0.5, edge_thres
     
     return predicted_islands
 
-def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, edge_thresh=0.5):
+def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, edge_thresh=0.5, save_path="model_evaluation.txt"):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Running evaluation on device: {device}")
     
@@ -135,6 +135,19 @@ def evaluate_dataset(dataset_dir, model_path, eval_paths=None, node_thresh=0.5, 
     avg_island_size = (total_island_size / total_islands_predicted) if total_islands_predicted > 0 else 0.0
     avg_network_coverage = (total_network_coverage / len(paths))
     
+
+    with open(save_path, "a") as f:
+        f.write("\n" + "="*50 + "\n")
+        f.write("EVALUATION RESULTS\n")
+        f.write("="*50 + "\n")
+        f.write(f"Total Graphs Evaluated:      {len(paths)}\n")
+        f.write(f"Total Predicted Islands:     {total_islands_predicted}\n")
+        f.write(f"Verified Observable Islands: {total_observable_islands} ({accuracy:.2f}%)\n")
+        f.write(f"Average Rank Deficiency:     {avg_deficiency:.4f}\n")
+        f.write(f"Average Island Size:          {avg_island_size:.4f}\n")
+        f.write(f"Average Network Coverage:     {avg_network_coverage*100:.4f}%\n")
+        f.write("="*50 + "\n")
+
     print("\n" + "="*50)
     print("EVALUATION RESULTS")
     print("="*50)
