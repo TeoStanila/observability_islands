@@ -548,7 +548,7 @@
     "measurement": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[51,52,53],\"data\":[[null,\"v\",\"bus\",43,0.8658372552269,0.01,null],[null,\"p\",\"bus\",43,12.0,0.03,null],[null,\"p\",\"bus\",44,0.0,0.03,null]]}",
+      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[44,45,122],\"data\":[[null,\"v\",\"bus\",43,0.8658372552269,0.01,null],[null,\"q\",\"bus\",43,1.800000000000011,0.03,null],[null,\"p\",\"line\",57,42.130512444489902,0.03,\"to\"]]}",
       "orient": "split",
       "dtype": {
         "name": "object",

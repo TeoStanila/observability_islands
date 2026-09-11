@@ -301,7 +301,7 @@
     "ext_grid": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"bus\",\"vm_pu\",\"va_degree\",\"slack_weight\",\"in_service\",\"max_p_mw\",\"min_p_mw\",\"max_q_mvar\",\"min_q_mvar\"],\"index\":[0],\"data\":[[null,17,0.943355392603702,0.0,1.0,true,null,null,null,null]]}",
+      "_object": "{\"columns\":[\"name\",\"bus\",\"vm_pu\",\"va_degree\",\"slack_weight\",\"in_service\",\"max_p_mw\",\"min_p_mw\",\"max_q_mvar\",\"min_q_mvar\"],\"index\":[0],\"data\":[[null,18,0.899074540646918,0.0,1.0,true,null,null,null,null]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -548,7 +548,7 @@
     "measurement": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[23,24,25,26,27,134,135,136,137,138,139,140],\"data\":[[null,\"v\",\"bus\",17,0.943355392603702,0.01,null],[null,\"q\",\"bus\",17,0.900806032455172,0.03,null],[null,\"v\",\"bus\",18,0.899074540646918,0.01,null],[null,\"p\",\"bus\",18,3.299999999999954,0.03,null],[null,\"p\",\"bus\",19,2.299999999999954,0.03,null],[null,\"p\",\"line\",26,5.390723166704565,0.03,\"from\"],[null,\"q\",\"line\",26,2.525302723245161,0.03,\"from\"],[null,\"q\",\"line\",26,-2.252532184589422,0.03,\"to\"],[null,\"p\",\"line\",27,1.907150585511951,0.03,\"from\"],[null,\"q\",\"line\",27,1.652532184472128,0.03,\"from\"],[null,\"p\",\"line\",27,-1.884855766343182,0.03,\"to\"],[null,\"q\",\"line\",27,-1.618341543061366,0.03,\"to\"]]}",
+      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[38,39,40,41,42,43,44,200,201,202,203,204,205,206],\"data\":[[null,\"p\",\"bus\",17,27.200000000000045,0.03,null],[null,\"q\",\"bus\",17,0.900806032455172,0.03,null],[null,\"v\",\"bus\",18,0.899074540646918,0.01,null],[null,\"p\",\"bus\",18,3.299999999999954,0.03,null],[null,\"q\",\"bus\",18,0.599999999999994,0.03,null],[null,\"v\",\"bus\",19,0.885103417509063,0.01,null],[null,\"p\",\"bus\",19,2.299999999999954,0.03,null],[null,\"p\",\"line\",26,5.390723166704565,0.03,\"from\"],[null,\"q\",\"line\",26,2.525302723245161,0.03,\"from\"],[null,\"p\",\"line\",26,-5.207150585215081,0.03,\"to\"],[null,\"p\",\"line\",27,1.907150585511951,0.03,\"from\"],[null,\"q\",\"line\",27,1.652532184472128,0.03,\"from\"],[null,\"p\",\"line\",27,-1.884855766343182,0.03,\"to\"],[null,\"q\",\"line\",27,-1.618341543061366,0.03,\"to\"]]}",
       "orient": "split",
       "dtype": {
         "name": "object",

@@ -5,7 +5,7 @@
     "bus": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"vn_kv\",\"type\",\"zone\",\"in_service\",\"max_vm_pu\",\"min_vm_pu\",\"geo\"],\"index\":[0,1,2],\"data\":[[1,115.0,\"b\",1.0,true,1.06,0.94,\"{\\\"coordinates\\\": [0.5288884694, -3.912989511], \\\"type\\\": \\\"Point\\\"}\"],[2,115.0,\"b\",1.0,true,1.06,0.94,\"{\\\"coordinates\\\": [-0.4983066916, -3.3372580513], \\\"type\\\": \\\"Point\\\"}\"],[3,115.0,\"b\",1.0,true,1.06,0.94,\"{\\\"coordinates\\\": [0.5024323866, -2.1628254114], \\\"type\\\": \\\"Point\\\"}\"]]}",
+      "_object": "{\"columns\":[\"name\",\"vn_kv\",\"type\",\"zone\",\"in_service\",\"max_vm_pu\",\"min_vm_pu\",\"geo\"],\"index\":[12,14],\"data\":[[13,115.0,\"b\",1.0,true,1.06,0.94,\"{\\\"coordinates\\\": [2.1501525807, -3.3664865184], \\\"type\\\": \\\"Point\\\"}\"],[15,115.0,\"b\",1.0,true,1.06,0.94,\"{\\\"coordinates\\\": [1.45094737, -2.747667864], \\\"type\\\": \\\"Point\\\"}\"]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -39,7 +39,7 @@
     "load": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"bus\",\"p_mw\",\"q_mvar\",\"const_z_p_percent\",\"const_z_q_percent\",\"const_i_p_percent\",\"const_i_q_percent\",\"sn_mva\",\"scaling\",\"in_service\",\"type\",\"controllable\"],\"index\":[0,1,2],\"data\":[[null,0,55.0,17.0,0.0,0.0,0.0,0.0,null,1.0,true,null,false],[null,1,3.0,88.0,0.0,0.0,0.0,0.0,null,1.0,true,null,false],[null,2,41.0,21.0,0.0,0.0,0.0,0.0,null,1.0,true,null,false]]}",
+      "_object": "{\"columns\":[\"name\",\"bus\",\"p_mw\",\"q_mvar\",\"const_z_p_percent\",\"const_z_q_percent\",\"const_i_p_percent\",\"const_i_q_percent\",\"sn_mva\",\"scaling\",\"in_service\",\"type\",\"controllable\"],\"index\":[9,11],\"data\":[[null,12,18.0,2.3,0.0,0.0,0.0,0.0,null,1.0,true,null,false],[null,14,22.0,5.0,0.0,0.0,0.0,0.0,null,1.0,true,null,false]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -173,7 +173,7 @@
     "gen": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"bus\",\"p_mw\",\"vm_pu\",\"sn_mva\",\"min_q_mvar\",\"max_q_mvar\",\"scaling\",\"slack\",\"in_service\",\"slack_weight\",\"type\",\"controllable\",\"max_p_mw\",\"min_p_mw\",\"id_q_capability_characteristic\",\"reactive_capability_curve\",\"curve_style\"],\"index\":[0,1],\"data\":[[null,1,0.0,1.01,null,-17.0,50.0,1.0,false,true,0.0,null,true,100.0,0.0,null,false,null],[null,2,40.0,0.985,null,-10.0,60.0,1.0,false,true,0.0,null,true,140.0,0.0,null,false,null]]}",
+      "_object": "{\"columns\":[\"name\",\"bus\",\"p_mw\",\"vm_pu\",\"sn_mva\",\"min_q_mvar\",\"max_q_mvar\",\"scaling\",\"slack\",\"in_service\",\"slack_weight\",\"type\",\"controllable\",\"max_p_mw\",\"min_p_mw\",\"id_q_capability_characteristic\",\"reactive_capability_curve\",\"curve_style\"],\"index\":[],\"data\":[]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -301,7 +301,7 @@
     "ext_grid": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"bus\",\"vm_pu\",\"va_degree\",\"slack_weight\",\"in_service\",\"max_p_mw\",\"min_p_mw\",\"max_q_mvar\",\"min_q_mvar\"],\"index\":[0],\"data\":[[null,0,1.04,0.0,1.0,true,575.879999999999996,0.0,200.0,-140.0]]}",
+      "_object": "{\"columns\":[\"name\",\"bus\",\"vm_pu\",\"va_degree\",\"slack_weight\",\"in_service\",\"max_p_mw\",\"min_p_mw\",\"max_q_mvar\",\"min_q_mvar\"],\"index\":[0],\"data\":[[null,12,0.982977359050146,0.0,1.0,true,null,null,null,null]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -321,7 +321,7 @@
     "line": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"std_type\",\"from_bus\",\"to_bus\",\"length_km\",\"r_ohm_per_km\",\"x_ohm_per_km\",\"c_nf_per_km\",\"g_us_per_km\",\"max_i_ka\",\"df\",\"parallel\",\"type\",\"in_service\",\"max_loading_percent\",\"geo\"],\"index\":[0,1],\"data\":[[null,null,0,1,1.0,1.097675,3.703,2587.396050265217582,0.0,49.702327521541697,1.0,1,\"ol\",true,100.0,null],[null,null,1,2,1.0,3.94105,11.241250000000001,1640.689898540269496,0.0,49.702327521541697,1.0,1,\"ol\",true,100.0,null]]}",
+      "_object": "{\"columns\":[\"name\",\"std_type\",\"from_bus\",\"to_bus\",\"length_km\",\"r_ohm_per_km\",\"x_ohm_per_km\",\"c_nf_per_km\",\"g_us_per_km\",\"max_i_ka\",\"df\",\"parallel\",\"type\",\"in_service\",\"max_loading_percent\",\"geo\"],\"index\":[13],\"data\":[[null,null,12,14,1.0,3.557525,11.492525000000001,461.318675628682172,0.0,49.702327521541697,1.0,1,\"ol\",true,100.0,null]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -548,7 +548,7 @@
     "measurement": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[0,1,2,3,69,70,71],\"data\":[[null,\"p\",\"bus\",0,-426.090207573692567,0.03,null],[null,\"v\",\"bus\",1,1.01,0.01,null],[null,\"q\",\"bus\",1,88.686491984481648,0.03,null],[null,\"p\",\"bus\",2,0.999999999999943,0.03,null],[null,\"p\",\"line\",0,103.227389345197707,0.03,\"from\"],[null,\"q\",\"line\",0,-83.756126386932436,0.03,\"to\"],[null,\"q\",\"line\",1,-4.930365597548845,0.03,\"from\"]]}",
+      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[13,14,73],\"data\":[[null,\"v\",\"bus\",12,0.982977359050146,0.01,null],[null,\"q\",\"bus\",12,2.300000000000011,0.03,null],[null,\"p\",\"line\",13,48.703386628094101,0.03,\"to\"]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -579,7 +579,7 @@
     "poly_cost": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"element\",\"et\",\"cp0_eur\",\"cp1_eur_per_mw\",\"cp2_eur_per_mw2\",\"cq0_eur\",\"cq1_eur_per_mvar\",\"cq2_eur_per_mvar2\"],\"index\":[0,1,2],\"data\":[[0,\"ext_grid\",0.0,20.0,0.0775795,0.0,0.0,0.0],[0,\"gen\",0.0,40.0,0.01,0.0,0.0,0.0],[1,\"gen\",0.0,20.0,0.25,0.0,0.0,0.0]]}",
+      "_object": "{\"columns\":[\"element\",\"et\",\"cp0_eur\",\"cp1_eur_per_mw\",\"cp2_eur_per_mw2\",\"cq0_eur\",\"cq1_eur_per_mvar\",\"cq2_eur_per_mvar2\"],\"index\":[],\"data\":[]}",
       "orient": "split",
       "dtype": {
         "element": "uint32",
@@ -1475,7 +1475,7 @@
     "res_bus": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"vm_pu\",\"va_degree\",\"p_mw\",\"q_mvar\"],\"index\":[0,1,2],\"data\":[[1.04,0.0,-426.090207573692567,-113.235953827533478],[1.01,-1.206975745515134,3.0,88.686491984481648],[0.985,-6.067216960371021,0.999999999999943,16.881097172072771]]}",
+      "_object": "{\"columns\":[\"vm_pu\",\"va_degree\",\"p_mw\",\"q_mvar\"],\"index\":[12,14],\"data\":[[0.982977359050146,-9.874834844301,18.0,2.300000000000011],[0.986479742691449,-7.215796494568602,22.0,5.0]]}",
       "orient": "split",
       "dtype": {
         "vm_pu": "float64",
@@ -1501,7 +1501,7 @@
     "res_line": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"p_from_mw\",\"q_from_mvar\",\"p_to_mw\",\"q_to_mvar\",\"pl_mw\",\"ql_mvar\",\"i_from_ka\",\"i_to_ka\",\"i_ka\",\"vm_from_pu\",\"va_from_degree\",\"vm_to_pu\",\"va_to_degree\",\"loading_percent\"],\"index\":[0,1],\"data\":[[103.227389345197707,74.685047093525043,-101.89794108217194,-83.756126386932436,1.329448263025768,-9.071079293407394,0.615060195631097,0.655651871607534,0.655651871607534,1.04,0.0,1.01,-1.206975745515134,1.319157279552684],[98.897941082236286,-4.930365597548845,-96.040524642263648,4.940285253510941,2.857416439972638,0.009919655962096,0.492205453680266,0.49015523478884,0.492205453680266,1.01,-1.206975745515134,0.985,-6.067216960371021,0.990306648047693]]}",
+      "_object": "{\"columns\":[\"p_from_mw\",\"q_from_mvar\",\"p_to_mw\",\"q_to_mvar\",\"pl_mw\",\"ql_mvar\",\"i_from_ka\",\"i_to_ka\",\"i_ka\",\"vm_from_pu\",\"va_from_degree\",\"vm_to_pu\",\"va_to_degree\",\"loading_percent\"],\"index\":[13],\"data\":[[-48.020616995478512,10.993361402152583,48.703386628094101,-11.017980312602328,0.682769632615589,-0.024618910449744,0.251604278334263,0.254126942214277,0.254126942214277,0.982977359050146,-9.874834844301,0.986479742691449,-7.215796494568602,0.511297870515491]]}",
       "orient": "split",
       "dtype": {
         "p_from_mw": "float64",
@@ -1615,7 +1615,7 @@
     "res_ext_grid": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"p_mw\",\"q_mvar\"],\"index\":[0],\"data\":[[481.090207573692567,130.235953827533478]]}",
+      "_object": "{\"columns\":[\"p_mw\",\"q_mvar\"],\"index\":[],\"data\":[]}",
       "orient": "split",
       "dtype": {
         "p_mw": "float64",
@@ -1627,7 +1627,7 @@
     "res_load": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"p_mw\",\"q_mvar\"],\"index\":[0,1,2],\"data\":[[55.0,17.0],[3.0,88.0],[41.0,21.0]]}",
+      "_object": "{\"columns\":[\"p_mw\",\"q_mvar\"],\"index\":[9,11],\"data\":[[18.0,2.3],[22.0,5.0]]}",
       "orient": "split",
       "dtype": {
         "p_mw": "float64",
@@ -1699,7 +1699,7 @@
     "res_gen": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"p_mw\",\"q_mvar\",\"va_degree\",\"vm_pu\"],\"index\":[0,1],\"data\":[[0.0,-0.686491984481648,-1.206975745515134,1.01],[40.0,4.118902827927236,-6.067216960371021,0.985]]}",
+      "_object": "{\"columns\":[\"p_mw\",\"q_mvar\",\"va_degree\",\"vm_pu\"],\"index\":[],\"data\":[]}",
       "orient": "split",
       "dtype": {
         "p_mw": "float64",

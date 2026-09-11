@@ -301,7 +301,7 @@
     "ext_grid": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"bus\",\"vm_pu\",\"va_degree\",\"slack_weight\",\"in_service\",\"max_p_mw\",\"min_p_mw\",\"max_q_mvar\",\"min_q_mvar\"],\"index\":[0],\"data\":[[null,20,0.842962198303528,0.0,1.0,true,null,null,null,null]]}",
+      "_object": "{\"columns\":[\"name\",\"bus\",\"vm_pu\",\"va_degree\",\"slack_weight\",\"in_service\",\"max_p_mw\",\"min_p_mw\",\"max_q_mvar\",\"min_q_mvar\"],\"index\":[0],\"data\":[[null,19,0.885103417509063,0.0,1.0,true,null,null,null,null]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
@@ -548,7 +548,7 @@
     "measurement": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[12,13,100,101],\"data\":[[null,\"v\",\"bus\",20,0.842962198303528,0.01,null],[null,\"q\",\"bus\",20,0.0,0.03,null],[null,\"p\",\"trafo\",2,0.415144234426066,0.03,\"lv\"],[null,\"q\",\"trafo\",2,-0.612359011586128,0.03,\"lv\"]]}",
+      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[22,23,138,139,140],\"data\":[[null,\"v\",\"bus\",19,0.885103417509063,0.01,null],[null,\"p\",\"bus\",19,2.299999999999954,0.03,null],[null,\"p\",\"trafo\",2,-0.415144234426059,0.03,\"hv\"],[null,\"q\",\"trafo\",2,0.618341543248149,0.03,\"hv\"],[null,\"p\",\"trafo\",2,0.415144234426066,0.03,\"lv\"]]}",
       "orient": "split",
       "dtype": {
         "name": "object",

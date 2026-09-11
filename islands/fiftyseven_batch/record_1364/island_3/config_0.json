@@ -548,7 +548,7 @@
     "measurement": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[0,1,2,3,4,69,70],\"data\":[[null,\"p\",\"bus\",0,-426.090207573692567,0.03,null],[null,\"q\",\"bus\",0,-113.235953827533478,0.03,null],[null,\"v\",\"bus\",1,1.01,0.01,null],[null,\"p\",\"bus\",1,3.0,0.03,null],[null,\"v\",\"bus\",2,0.985,0.01,null],[null,\"q\",\"line\",0,74.685047093525043,0.03,\"from\"],[null,\"p\",\"line\",1,-96.040524642263648,0.03,\"to\"]]}",
+      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[0,1,2,35,36,37],\"data\":[[null,\"q\",\"bus\",0,-113.235953827533478,0.03,null],[null,\"q\",\"bus\",1,88.686491984481648,0.03,null],[null,\"p\",\"bus\",2,0.999999999999943,0.03,null],[null,\"p\",\"line\",0,103.227389345197707,0.03,\"from\"],[null,\"p\",\"line\",0,-101.89794108217194,0.03,\"to\"],[null,\"q\",\"line\",1,-4.930365597548845,0.03,\"from\"]]}",
       "orient": "split",
       "dtype": {
         "name": "object",

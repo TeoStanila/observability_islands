@@ -548,7 +548,7 @@
     "measurement": {
       "_module": "pandas.core.frame",
       "_class": "DataFrame",
-      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[44,45,46,113],\"data\":[[null,\"v\",\"bus\",45,0.870737828724114,0.01,null],[null,\"q\",\"bus\",45,0.0,0.03,null],[null,\"q\",\"bus\",46,11.600000000000023,0.03,null],[null,\"p\",\"line\",48,40.205336515623166,0.03,\"from\"]]}",
+      "_object": "{\"columns\":[\"name\",\"measurement_type\",\"element_type\",\"element\",\"value\",\"std_dev\",\"side\"],\"index\":[50,51,52,116,117,118],\"data\":[[null,\"v\",\"bus\",45,0.870737828724114,0.01,null],[null,\"p\",\"bus\",45,0.0,0.03,null],[null,\"p\",\"bus\",46,29.700000000000046,0.03,null],[null,\"p\",\"line\",48,40.205336515623166,0.03,\"from\"],[null,\"q\",\"line\",48,10.847314042373119,0.03,\"from\"],[null,\"q\",\"line\",48,-9.527093867339024,0.03,\"to\"]]}",
       "orient": "split",
       "dtype": {
         "name": "object",
